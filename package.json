@@ -1,21 +1,25 @@
 {
-  "name": "smartmaggot-landing",
+  "name": "gardahijau-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "NEXT_DIST_DIR=.next-dev next dev --turbopack",
+    "build": "NEXT_DIST_DIR=.next-build next build",
+    "start": "NEXT_DIST_DIR=.next-build next start",
+    "db:migrate": "psql \"$DATABASE_URL\" -f database/001_initial.sql -f database/002_complete_public_catalog.sql",
+    "db:seed": "node scripts/seed-db.mjs",
     "prepare:logos": "node scripts/prepare-logos.mjs"
   },
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest",
-    "react-router-dom": "latest"
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "next": "^15.5.29",
+    "pg": "^8.23.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "sharp": "0.34.5",
-    "vite": "6.4.6"
+    "sharp": "0.34.5"
   }
 }
