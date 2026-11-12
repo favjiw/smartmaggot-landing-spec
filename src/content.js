@@ -10,7 +10,7 @@ export const content = {
   ],
   products: [
     { id: "maggot-segar", name: "Maggot Segar", description: "Larva BSF segar berprotein tinggi untuk pakan ikan dan unggas.", price: 8000, unit: "kg", status: "Tersedia", photo: 0 },
-    { id: "kasgot", name: "Kasgot Pupuk Organik", description: "Residu budidaya yang matang untuk menyuburkan kebun dan lahan warga.", price: null, unit: "kg", status: "Tersedia", photo: 4 },
+    { id: "kasgot", name: "Kasgot (Pupuk Organik)", description: "Pupuk organik padat kaya mikroba untuk menyuburkan tanaman sayur dan hias.", price: 15000, unit: "karung", status: "Tersedia", photo: 4 },
     { id: "maggot-kering", name: "Maggot Kering", description: "Pakan bernutrisi dengan masa simpan lebih panjang dan mudah didistribusikan.", price: 45000, unit: "kg", status: "Pre-order", photo: 5 },
   ],
   activities: [
