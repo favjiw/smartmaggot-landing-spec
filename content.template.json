@@ -1,0 +1,78 @@
+{
+  "_catatan": "Satu-satunya file yang perlu diubah untuk mengganti konten landing. Cari 'TODO' sebelum go-live.",
+  "situs": {
+    "judul": "Sinergi Garda Hijau Mengger",
+    "deskripsi": "Pengolahan sampah organik warga Kelurahan Mengger menjadi maggot BSF dan kasgot. TODO: perhalus kalimat",
+    "gambarPratinjau": "/assets/og-image.jpg",
+    "sistemPendukung": "WeGot / Smart Maggot"
+  },
+  "kontak": {
+    "whatsapp": "TODO_62812xxxxxxx",
+    "pesanUmum": "Halo, saya ingin bertanya tentang produk dan program Garda Hijau Mengger.",
+    "alamat": "TODO: alamat Hanggar Maggot, Kel. Mengger, Bandung",
+    "mapsEmbedUrl": "TODO: https://www.google.com/maps/embed?pb=...",
+    "instagram": null
+  },
+  "mitra": {
+    "nama": "Sinergi Garda Hijau Mengger",
+    "tagline": "TODO: satu kalimat misi, mis. 'Mengubah sampah dapur warga jadi pakan dan pupuk bernilai.'",
+    "profil": [
+      "TODO: paragraf 1 — siapa mitra, sejak kapan, di mana.",
+      "TODO: paragraf 2 — bagaimana sampah organik diolah dengan maggot BSF."
+    ],
+    "logo": "/assets/logo-mitra.png",
+    "logoPendukung": [
+      { "nama": "UNIKOM", "file": "/assets/logo-unikom.png" },
+      { "nama": "BEM UNIKOM", "file": "/assets/logo-bem.png" },
+      { "nama": "TODO: logo ke-3 dari splash prototipe", "file": "/assets/logo-3.png" }
+    ]
+  },
+  "program": [
+    { "ikon": "recycle", "judul": "Pencacahan Sampah Organik", "deskripsi": "TODO: 1 kalimat" },
+    { "ikon": "bug", "judul": "Budidaya Maggot BSF", "deskripsi": "TODO: 1 kalimat" },
+    { "ikon": "sprout", "judul": "Kasgot untuk Pertanian", "deskripsi": "TODO: 1 kalimat" }
+  ],
+  "produk": [
+    {
+      "id": "maggot-segar",
+      "nama": "Maggot Segar",
+      "deskripsi": "Larva BSF segar, kaya protein untuk pakan ikan dan unggas.",
+      "foto": "/assets/produk/maggot-segar.jpg",
+      "harga": null,
+      "satuan": "kg",
+      "status": "tersedia"
+    },
+    {
+      "id": "kasgot",
+      "nama": "Kasgot",
+      "deskripsi": "Bekas maggot (kompos) untuk pupuk tanaman.",
+      "foto": "/assets/produk/kasgot.jpg",
+      "harga": null,
+      "satuan": "kg",
+      "status": "tersedia"
+    },
+    {
+      "id": "maggot-kering",
+      "nama": "Maggot Kering",
+      "deskripsi": "Maggot yang dikeringkan, lebih awet untuk stok pakan.",
+      "foto": "/assets/produk/maggot-kering.jpg",
+      "harga": null,
+      "satuan": "kg",
+      "status": "pre-order"
+    }
+  ],
+  "kegiatan": [
+    {
+      "slug": "contoh-kegiatan-1",
+      "judul": "TODO: judul kegiatan",
+      "tanggal": "2026-11-01",
+      "ringkasan": "TODO: 1–2 kalimat ringkasan.",
+      "isi": ["TODO: paragraf isi."],
+      "foto": ["/assets/kegiatan/contoh-1.jpg"]
+    }
+  ],
+  "api": {
+    "ringkasanUrl": "https://api.smartmaggot.my.id/api/public/ringkasan",
+    "timeoutMs": 5000
+  }
+}
