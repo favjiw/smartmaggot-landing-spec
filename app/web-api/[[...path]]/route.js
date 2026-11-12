@@ -86,7 +86,7 @@ async function handler(request, context, method) {
       const uploaded = [];
       for (const file of prepared) {
         const { rows } = await client.query("INSERT INTO media (file_name,mime_type,file_size,data,created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id", [file.name, file.mimeType, file.bytes.length, file.bytes, admin.id]);
-        uploaded.push({ id: rows[0].id, url: `/api/media/${rows[0].id}`, name: file.name });
+        uploaded.push({ id: rows[0].id, url: `/web-api/media/${rows[0].id}`, name: file.name });
       }
       await client.query("COMMIT");
       return response({ success: true, data: uploaded }, 201);
