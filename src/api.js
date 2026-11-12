@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import { fallbackPublic } from "./content";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/web-api";
 
 export async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("gardahijau_admin_token");

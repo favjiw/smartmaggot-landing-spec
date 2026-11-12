@@ -69,7 +69,7 @@ Buka:
 
 - Situs publik: <http://localhost:3000>
 - Admin: <http://localhost:3000/admin/login>
-- Pemeriksaan koneksi database: <http://localhost:3000/api/health>
+- Pemeriksaan koneksi database: <http://localhost:3000/web-api/health>
 
 Untuk menghentikan server development, tekan `Ctrl+C` di terminal.
 
@@ -88,7 +88,7 @@ Hasil disimpan di memori server selama 5 menit (stale-while-revalidate), dan tok
 
 > **Catatan:** dokumentasi API menyebut `GET /api/pencacahan` dan `GET /api/siklus` mengembalikan data **milik user yang login**. Jika itu benar, angka di landing hanya mencakup data akun layanan tersebut. Untuk total semua RW, minta tim backend merilis `/api/public/ringkasan` (T1 di `TUGAS-BE.md`).
 
-Cek sumber angka yang sedang dipakai lewat `GET /api/public/ringkasan`; field `sumber` bernilai `api-publik`, `api-akun-layanan`, atau `manual`.
+Cek sumber angka yang sedang dipakai lewat `GET /web-api/public/ringkasan` (endpoint landing); field `sumber` bernilai `api-publik`, `api-akun-layanan`, atau `manual`.
 
 ## Cara memakai admin
 
@@ -119,21 +119,23 @@ Migrasi awal berisi data contoh untuk memudahkan percobaan lokal. Periksa data t
 
 ## API yang tersedia
 
-Semua endpoint menggunakan prefix `/api`. Login dan endpoint publik tidak memerlukan token. Endpoint `/api/admin/*` memerlukan token admin yang diperoleh dari login.
+API landing memakai prefix `/web-api` (bukan `/api`) agar bisa berbagi domain dengan backend Maggot BEM, yang tetap memakai `/api/*` dan `/api-docs`.
+
+Semua endpoint menggunakan prefix `/web-api`. Login dan endpoint publik tidak memerlukan token. Endpoint `/web-api/admin/*` memerlukan token admin yang diperoleh dari login.
 
 | Method | Endpoint | Kegunaan |
 |---|---|---|
-| `GET` | `/api/health` | Memeriksa koneksi PostgreSQL |
-| `POST` | `/api/auth/login` | Login admin |
-| `GET` | `/api/public/catalog` | Mengambil produk, kegiatan, dan pengaturan publik (`503` jika database tidak tersedia) |
-| `GET` | `/api/public/ringkasan` | Mengambil angka dampak publik dari API Garda Hijau atau angka manual (`503` jika tidak ada) |
-| `GET` | `/api/admin/dashboard` | Mengambil ringkasan admin dan grafik stok tujuh hari |
-| `GET`, `POST`, `PATCH` | `/api/admin/products` | Membaca, menambah, dan mengubah produk |
-| `GET`, `POST` | `/api/admin/products/:id/stock` | Membaca riwayat atau mencatat pergerakan stok |
-| `GET`, `POST`, `PATCH`, `DELETE` | `/api/admin/activities` | Mengelola kegiatan |
-| `GET`, `PUT` | `/api/admin/settings` | Membaca atau mengubah pengaturan situs |
-| `PUT` | `/api/admin/impact` | Mengubah angka dampak landing page |
-| `POST` | `/api/admin/upload` | Mengunggah foto ke PostgreSQL |
+| `GET` | `/web-api/health` | Memeriksa koneksi PostgreSQL |
+| `POST` | `/web-api/auth/login` | Login admin |
+| `GET` | `/web-api/public/catalog` | Mengambil produk, kegiatan, dan pengaturan publik (`503` jika database tidak tersedia) |
+| `GET` | `/web-api/public/ringkasan` | Mengambil angka dampak publik dari API Garda Hijau atau angka manual (`503` jika tidak ada) |
+| `GET` | `/web-api/admin/dashboard` | Mengambil ringkasan admin dan grafik stok tujuh hari |
+| `GET`, `POST`, `PATCH` | `/web-api/admin/products` | Membaca, menambah, dan mengubah produk |
+| `GET`, `POST` | `/web-api/admin/products/:id/stock` | Membaca riwayat atau mencatat pergerakan stok |
+| `GET`, `POST`, `PATCH`, `DELETE` | `/web-api/admin/activities` | Mengelola kegiatan |
+| `GET`, `PUT` | `/web-api/admin/settings` | Membaca atau mengubah pengaturan situs |
+| `PUT` | `/web-api/admin/impact` | Mengubah angka dampak landing page |
+| `POST` | `/web-api/admin/upload` | Mengunggah foto ke PostgreSQL |
 
 Contoh respons memakai bentuk `{ "success": true, "data": ... }`. Kegagalan memakai `{ "success": false, "message": "..." }`.
 
@@ -154,8 +156,8 @@ Aplikasi berjalan pada port `3000` secara default. Tempatkan reverse proxy HTTPS
 
 - **`password authentication failed` atau koneksi ditolak:** periksa user, kata sandi, dan port di `DATABASE_URL` pada `.env.local`, serta pastikan service PostgreSQL berjalan.
 - **Login admin gagal:** pastikan `ADMIN_EMAIL`/`ADMIN_PASSWORD` benar, kemudian jalankan `npm run db:seed`.
-- **Kartu dampak tidak muncul:** buka `/api/public/ringkasan`. Lihat log server untuk pesan `[gardahijau-api]` (mis. login akun layanan gagal), atau isi angka manual di admin.
-- **Landing menampilkan produk/kegiatan contoh:** database belum tersambung; halaman memakai data cadangan dari `src/content.js`. Periksa `/api/health`.
+- **Kartu dampak tidak muncul:** buka `/web-api/public/ringkasan`. Lihat log server untuk pesan `[gardahijau-api]` (mis. login akun layanan gagal), atau isi angka manual di admin.
+- **Landing menampilkan produk/kegiatan contoh:** database belum tersambung; halaman memakai data cadangan dari `src/content.js`. Periksa `/web-api/health`.
 - **Tabel belum ditemukan:** jalankan `npm run db:migrate`.
 - **Next.js menampilkan file `.next` hilang atau rusak:** hentikan server yang berjalan ganda di folder proyek, lalu jalankan kembali `npm run dev`. Proyek menggunakan `.next-dev` untuk development dan `.next-build` untuk build produksi.
 - **Foto gagal diunggah:** pastikan jenis berkas JPG/PNG/WebP, ukuran di bawah 2 MB, dan koneksi database memiliki ruang yang cukup.
