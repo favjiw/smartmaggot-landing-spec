@@ -4,7 +4,8 @@ Landing page dan halaman admin untuk katalog produk Garda Hijau. Aplikasi memaka
 
 ## Fitur
 
-- Landing page, profil, daftar kegiatan, dan halaman detail kegiatan.
+- Landing page, profil, daftar kegiatan (dengan filter kategori), dan halaman detail kegiatan. Data dirender di server, jadi konten dari database langsung tampil tanpa kedip.
+- Angka dampak di landing diambil dari API aplikasi Garda Hijau (data pencatatan Android), dengan angka manual admin sebagai cadangan.
 - Admin untuk ringkasan, stok, produk, kegiatan, pengaturan profil/kontak, dan angka dampak.
 - Pergerakan stok dicatat sebagai riwayat masuk, keluar, atau penyesuaian. Stok tersedia dihitung dari seluruh riwayat.
 - Foto produk dan kegiatan dapat dipilih dari kamera/galeri lalu disimpan ke PostgreSQL.
@@ -13,8 +14,7 @@ Landing page dan halaman admin untuk katalog produk Garda Hijau. Aplikasi memaka
 ## Kebutuhan
 
 - Node.js 18.18 atau lebih baru dan npm.
-- PostgreSQL 14 atau lebih baru.
-- `psql` tersedia di PATH untuk menjalankan migrasi.
+- PostgreSQL 14 atau lebih baru. `psql` tidak wajib; migrasi dijalankan lewat Node.
 
 ## Menjalankan di komputer lokal
 
@@ -24,63 +24,42 @@ Landing page dan halaman admin untuk katalog produk Garda Hijau. Aplikasi memaka
 npm install
 ```
 
-### 2. Siapkan PostgreSQL
-
-Buat database dan pengguna PostgreSQL. Contoh di Linux dengan akun PostgreSQL lokal:
-
-```bash
-sudo -u postgres psql
-```
-
-Di prompt `psql`, buat pengguna dan database:
-
-```sql
-CREATE USER gardahijau WITH PASSWORD 'ganti-password-database';
-CREATE DATABASE gardahijau OWNER gardahijau;
-\q
-```
-
-Jika pengguna/database sudah tersedia, langkah ini bisa dilewati.
-
-### 3. Atur environment
+### 2. Atur environment
 
 Salin contoh konfigurasi:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env.local        # Windows PowerShell: Copy-Item .env.example .env.local
 ```
 
-Ubah nilai di `.env.local` sesuai PostgreSQL lokal. Buat `JWT_SECRET` acak yang panjang (minimal 32 karakter), serta ganti `ADMIN_PASSWORD` dengan kata sandi yang kuat.
+Ubah nilai di `.env.local`:
 
-Contoh URL database:
-
-```env
-DATABASE_URL=postgresql://gardahijau:ganti-password-database@localhost:5432/gardahijau
-DATABASE_SSL=false
-JWT_SECRET=ganti-dengan-random-secret-minimal-32-karakter
-ADMIN_EMAIL=admin@gardahijau.com
-ADMIN_PASSWORD=ganti-password-ini
-```
+| Variabel | Keterangan |
+|---|---|
+| `DATABASE_URL` | Koneksi PostgreSQL, mis. `postgresql://postgres:PASSWORD_ANDA@localhost:5432/gardahijau`. Database akan dibuat otomatis jika belum ada. |
+| `DATABASE_SSL` | `true` untuk database cloud yang mewajibkan SSL. |
+| `JWT_SECRET` | String acak minimal 32 karakter. Wajib di produksi. Buat dengan `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Akun login admin web (password minimal 8 karakter). |
+| `GARDAHIJAU_API_URL` | Alamat API aplikasi Garda Hijau. Bawaan: `https://gardahijau.codelabspace.or.id`. |
+| `GARDAHIJAU_API_USERNAME`, `GARDAHIJAU_API_PASSWORD` | Akun layanan aplikasi Garda Hijau untuk membaca data pencacahan & siklus. Lihat bagian *Integrasi API Garda Hijau*. |
+| `GARDAHIJAU_API_DISABLED` | `true` untuk mematikan integrasi dan hanya memakai angka manual. |
 
 `.env.local` berisi rahasia dan sudah dikecualikan dari Git. Jangan commit atau membagikan isinya.
 
-### 4. Buat tabel dan data awal
-
-Pastikan environment tersedia di terminal yang menjalankan perintah database:
+### 3. Buat tabel, data awal, dan akun admin
 
 ```bash
-set -a
-source .env.local
-set +a
-npm run db:migrate
-npm run db:seed
+npm run db:setup
 ```
 
-Migrasi membuat tabel dan memasukkan contoh pengaturan, dampak, produk, serta kegiatan awal. Data awal hanya ditambahkan jika belum ada. Sebelum instalasi produksi pertama, periksa dan ganti contoh data pada `database/001_initial.sql` dengan data organisasi yang benar.
+Perintah ini menjalankan `db:migrate` lalu `db:seed`. Skrip membaca `.env.local` sendiri, jadi tidak perlu `source` atau `set` variabel di terminal (berlaku di Windows, macOS, dan Linux).
 
-`db:seed` membuat atau memperbarui akun admin dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD`. Jika password diubah setelah akun dibuat, jalankan ulang `npm run db:seed`.
+- `db:migrate` menjalankan file `database/*.sql` berurutan dan mencatatnya di tabel `schema_migrations`, sehingga setiap file hanya dijalankan sekali. Aman dijalankan ulang.
+- `db:seed` membuat atau memperbarui akun admin dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD`. Jika password diubah, jalankan ulang `npm run db:seed`.
 
-### 5. Jalankan aplikasi
+Migrasi awal berisi data contoh. Sebelum instalasi produksi pertama, periksa dan ganti contoh data pada `database/001_initial.sql` dengan data organisasi yang benar.
+
+### 4. Jalankan aplikasi
 
 ```bash
 npm run dev
@@ -93,6 +72,23 @@ Buka:
 - Pemeriksaan koneksi database: <http://localhost:3000/api/health>
 
 Untuk menghentikan server development, tekan `Ctrl+C` di terminal.
+
+## Integrasi API Garda Hijau
+
+Landing page menampilkan **total sampah organik yang diolah** dan **jumlah siklus budidaya** dari aplikasi Android Garda Hijau melalui API [Maggot BEM](https://gardahijau.codelabspace.or.id/api-docs/). Integrasi berjalan di server Next.js (`lib/gardahijau-api.js`), sehingga kredensial tidak pernah dikirim ke browser.
+
+Urutan sumber angka dampak:
+
+1. `GET {GARDAHIJAU_API_URL}/api/public/ringkasan` tanpa token (kontrak di `TUGAS-BE.md`). Saat ini endpoint ini belum tersedia di backend; begitu dirilis, landing langsung memakainya tanpa perubahan kode dan tanpa akun layanan.
+2. Jika belum tersedia dan `GARDAHIJAU_API_USERNAME`/`GARDAHIJAU_API_PASSWORD` diisi: login sebagai akun layanan, lalu menjumlahkan `totalSampah` dari `GET /api/pencacahan` dan menghitung `GET /api/siklus`.
+3. Jika API tidak bisa dihubungi: angka manual dari admin (*Pengaturan → Dampak di landing page*).
+4. Jika semua sumber kosong atau bernilai 0, kartu dampak disembunyikan (tidak menampilkan error atau angka 0).
+
+Hasil disimpan di memori server selama 5 menit (stale-while-revalidate), dan token login dipakai ulang sampai mendekati kedaluwarsa, sehingga API tidak dipanggil setiap kali halaman dibuka. Bila API gagal, percobaan berikutnya ditunda 1 menit.
+
+> **Catatan:** dokumentasi API menyebut `GET /api/pencacahan` dan `GET /api/siklus` mengembalikan data **milik user yang login**. Jika itu benar, angka di landing hanya mencakup data akun layanan tersebut. Untuk total semua RW, minta tim backend merilis `/api/public/ringkasan` (T1 di `TUGAS-BE.md`).
+
+Cek sumber angka yang sedang dipakai lewat `GET /api/public/ringkasan`; field `sumber` bernilai `api-publik`, `api-akun-layanan`, atau `manual`.
 
 ## Cara memakai admin
 
@@ -129,8 +125,8 @@ Semua endpoint menggunakan prefix `/api`. Login dan endpoint publik tidak memerl
 |---|---|---|
 | `GET` | `/api/health` | Memeriksa koneksi PostgreSQL |
 | `POST` | `/api/auth/login` | Login admin |
-| `GET` | `/api/public/catalog` | Mengambil produk, kegiatan, dan pengaturan publik |
-| `GET` | `/api/public/ringkasan` | Mengambil angka dampak publik |
+| `GET` | `/api/public/catalog` | Mengambil produk, kegiatan, dan pengaturan publik (`503` jika database tidak tersedia) |
+| `GET` | `/api/public/ringkasan` | Mengambil angka dampak publik dari API Garda Hijau atau angka manual (`503` jika tidak ada) |
 | `GET` | `/api/admin/dashboard` | Mengambil ringkasan admin dan grafik stok tujuh hari |
 | `GET`, `POST`, `PATCH` | `/api/admin/products` | Membaca, menambah, dan mengubah produk |
 | `GET`, `POST` | `/api/admin/products/:id/stock` | Membaca riwayat atau mencatat pergerakan stok |
@@ -143,12 +139,11 @@ Contoh respons memakai bentuk `{ "success": true, "data": ... }`. Kegagalan mema
 
 ## Build dan menjalankan mode produksi
 
-Siapkan PostgreSQL produksi, isi environment produksi (`DATABASE_URL`, `DATABASE_SSL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`), lalu jalankan migrasi dan siapkan akun admin:
+Siapkan PostgreSQL produksi, isi environment produksi (`DATABASE_URL`, `DATABASE_SSL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, dan variabel `GARDAHIJAU_API_*`), lalu jalankan migrasi dan siapkan akun admin:
 
 ```bash
 npm ci
-npm run db:migrate
-npm run db:seed
+npm run db:setup
 npm run build
 npm start
 ```
@@ -157,8 +152,10 @@ Aplikasi berjalan pada port `3000` secara default. Tempatkan reverse proxy HTTPS
 
 ## Pemecahan masalah
 
-- **`DATABASE_URL` kosong atau koneksi ditolak:** muat `.env.local` ke shell sebelum menjalankan migrasi, periksa PostgreSQL aktif, nama database, kata sandi, dan port.
-- **Login gagal:** pastikan `ADMIN_EMAIL`/`ADMIN_PASSWORD` benar, kemudian jalankan `npm run db:seed` setelah memuat `.env.local`.
+- **`password authentication failed` atau koneksi ditolak:** periksa user, kata sandi, dan port di `DATABASE_URL` pada `.env.local`, serta pastikan service PostgreSQL berjalan.
+- **Login admin gagal:** pastikan `ADMIN_EMAIL`/`ADMIN_PASSWORD` benar, kemudian jalankan `npm run db:seed`.
+- **Kartu dampak tidak muncul:** buka `/api/public/ringkasan`. Lihat log server untuk pesan `[gardahijau-api]` (mis. login akun layanan gagal), atau isi angka manual di admin.
+- **Landing menampilkan produk/kegiatan contoh:** database belum tersambung; halaman memakai data cadangan dari `src/content.js`. Periksa `/api/health`.
 - **Tabel belum ditemukan:** jalankan `npm run db:migrate`.
 - **Next.js menampilkan file `.next` hilang atau rusak:** hentikan server yang berjalan ganda di folder proyek, lalu jalankan kembali `npm run dev`. Proyek menggunakan `.next-dev` untuk development dan `.next-build` untuk build produksi.
 - **Foto gagal diunggah:** pastikan jenis berkas JPG/PNG/WebP, ukuran di bawah 2 MB, dan koneksi database memiliki ruang yang cukup.
@@ -168,11 +165,12 @@ Aplikasi berjalan pada port `3000` secara default. Tempatkan reverse proxy HTTPS
 ```text
 app/                    Halaman Next.js dan API Route Handler
 database/               Skema dan migrasi PostgreSQL
-lib/                    Koneksi database dan autentikasi server
-public/assets/          Logo dan aset situs
-scripts/                Utilitas persiapan aset dan akun admin
+lib/                    Koneksi database, autentikasi, data publik, klien API Garda Hijau
+assets-source/          Foto dan logo asli (sumber sebelum dikonversi)
+public/assets/          Logo, foto produk (products/), foto kegiatan, dan aset situs
+scripts/                Migrasi database, akun admin, dan persiapan aset
 src/screens/            Halaman React landing dan admin
-src/api.js              Klien API browser dan hooks data publik
+src/api.js              Klien API admin dan context data publik
 src/styles.css          Gaya landing page
 src/admin.css           Gaya admin dan layout responsif
 ```

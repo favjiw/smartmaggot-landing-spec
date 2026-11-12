@@ -9,7 +9,7 @@ export const content = {
     ["03", "Program 3", ""],
   ],
   products: [
-    { id: "maggot-segar", name: "Maggot Segar", description: "Larva BSF segar berprotein tinggi untuk pakan ikan dan unggas.", price: 8000, unit: "kg", status: "Tersedia", photo: 0 },
+    { id: "maggot-segar", name: "Maggot Segar", description: "Larva BSF segar berprotein tinggi untuk pakan ikan dan unggas.", price: 8000, unit: "kg", status: "Tersedia", photo: 0, photoUrl: "/assets/products/maggot-segar.webp" },
     { id: "kasgot", name: "Kasgot (Pupuk Organik)", description: "Pupuk organik padat kaya mikroba untuk menyuburkan tanaman sayur dan hias.", price: 15000, unit: "karung", status: "Tersedia", photo: 4 },
     { id: "maggot-kering", name: "Maggot Kering", description: "Pakan bernutrisi dengan masa simpan lebih panjang dan mudah didistribusikan.", price: 45000, unit: "kg", status: "Pre-order", photo: 5 },
   ],
@@ -28,3 +28,12 @@ export const detailCopy = [
   "Kandungan protein mencapai 42% menjadikan larva panen langsung dipasok ke peternak lele dan unggas lokal dengan harga ramah peternak tanpa perantara.",
   "Selain menekan timbunan ke TPA Sarimukti, proses ini memproduksi 350 kg pupuk kasgot padat kaya hara untuk kebutuhan urban farming warga Mengger.",
 ];
+
+const activityPhotos = ["panen", "pemilahan", "pelatihan", "sosialisasi", "kasgot", "kunjungan"];
+
+// Data cadangan ketika database belum tersedia, berbentuk sama dengan respons /api/public/catalog.
+export const fallbackPublic = {
+  products: content.products.map((product) => ({ ...product, photo_url: product.photoUrl ?? `/assets/activities/${activityPhotos[product.photo] ?? "panen"}.webp`, stock_status: product.status })),
+  activities: content.activities.map((activity) => ({ ...activity, activity_date: activity.date, photos: [`/assets/activities/${activityPhotos[activity.photo]}.webp`] })),
+  settings: { partner_name: "Sinergi Garda Hijau Mengger", whatsapp: content.whatsapp, address: content.address, show_catalog: true, show_stock_status: true },
+};

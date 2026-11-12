@@ -4,11 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "NEXT_DIST_DIR=.next-dev next dev --turbopack",
-    "build": "NEXT_DIST_DIR=.next-build next build",
-    "start": "NEXT_DIST_DIR=.next-build next start",
-    "db:migrate": "psql \"$DATABASE_URL\" -f database/001_initial.sql -f database/002_complete_public_catalog.sql",
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "db:migrate": "node scripts/migrate-db.mjs",
     "db:seed": "node scripts/seed-db.mjs",
+    "db:setup": "npm run db:migrate && npm run db:seed",
     "prepare:logos": "node scripts/prepare-logos.mjs"
   },
   "dependencies": {
@@ -21,5 +22,8 @@
   },
   "devDependencies": {
     "sharp": "0.34.5"
+  },
+  "engines": {
+    "node": ">=18.18"
   }
 }

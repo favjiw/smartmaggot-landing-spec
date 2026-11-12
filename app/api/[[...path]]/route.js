@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { createToken, readAdmin } from "../../../lib/auth";
 import { pool, query } from "../../../lib/db";
+import { getPublicCatalog, getPublicImpact } from "../../../lib/public-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,14 @@ const slugify = (value) => value.toLowerCase().normalize("NFKD").replace(/[^a-z0
 const productSelect = `SELECT p.*, COALESCE(SUM(sm.quantity), 0)::float AS stock,
   CASE WHEN COALESCE(SUM(sm.quantity), 0) <= 0 THEN 'Habis' WHEN COALESCE(SUM(sm.quantity), 0) <= p.low_stock_threshold THEN 'Menipis' ELSE 'Tersedia' END AS stock_status
   FROM products p LEFT JOIN stock_movements sm ON sm.product_id = p.id`;
+
+// Tentukan jenis gambar dari isi file (magic bytes), bukan dari tipe yang dikirim browser.
+function detectImageType(bytes) {
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length > 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (bytes.length > 12 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return null;
+}
 
 async function body(request) {
   return request.json().catch(() => ({}));
@@ -36,43 +45,52 @@ async function handler(request, context, method) {
   }
 
   if (method === "GET" && route === "public/ringkasan") {
-    const { rows } = await query("SELECT total_waste_kg, processing_count, cycle_count, harvest_cycle_count, updated_at FROM impact_stats WHERE id=1");
-    const item = rows[0] ?? {};
-    return ok({ totalSampahKg: Number(item.total_waste_kg ?? 0), jumlahPencacahan: Number(item.processing_count ?? 0), jumlahSiklus: Number(item.cycle_count ?? 0), jumlahSiklusPanen: Number(item.harvest_cycle_count ?? 0), diperbaruiPada: item.updated_at }, { "Cache-Control": "public, max-age=60" });
+    const impact = await getPublicImpact();
+    if (!impact) return fail("Angka dampak belum tersedia.", 503);
+    return ok(impact, { "Cache-Control": "public, max-age=60" });
   }
 
   if (method === "GET" && route === "public/catalog") {
-    const [products, activities, settings] = await Promise.all([
-      query(`${productSelect} WHERE p.is_visible=true GROUP BY p.id ORDER BY p.id`),
-      query("SELECT id,slug,title,category,activity_date,summary,content,photos FROM activities WHERE is_published=true ORDER BY activity_date DESC"),
-      query("SELECT partner_name,whatsapp,email,address,operational_hours,description,show_catalog,show_stock_status FROM site_settings WHERE id=1"),
-    ]);
-    return ok({ products: products.rows, activities: activities.rows, settings: settings.rows[0] }, { "Cache-Control": "no-store" });
+    const catalog = await getPublicCatalog();
+    if (!catalog) return fail("Katalog belum tersedia.", 503);
+    return ok(catalog, { "Cache-Control": "no-store" });
   }
 
   const mediaMatch = route.match(/^media\/(\d+)$/);
   if (method === "GET" && mediaMatch) {
     const { rows } = await query("SELECT mime_type,data FROM media WHERE id=$1", [mediaMatch[1]]);
     if (!rows[0]) return fail("Foto tidak ditemukan.", 404);
-    return new NextResponse(new Uint8Array(rows[0].data), { headers: { "Content-Type": rows[0].mime_type, "Cache-Control": "public, max-age=31536000, immutable" } });
+    return new NextResponse(new Uint8Array(rows[0].data), { headers: { "Content-Type": rows[0].mime_type, "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
   }
 
   const admin = readAdmin(request);
   if (!route.startsWith("admin/") || !admin) return fail("Sesi tidak valid atau sudah berakhir.", 401);
 
   if (method === "POST" && route === "admin/upload") {
-    const form = await request.formData();
-    const files = form.getAll("photos");
+    const form = await request.formData().catch(() => null);
+    const files = form?.getAll("photos").filter((file) => typeof file === "object" && file?.arrayBuffer) ?? [];
     if (!files.length) return fail("Pilih minimal satu foto.", 422);
-    const uploaded = [];
+    if (files.length > 10) return fail("Maksimal 10 foto sekali unggah.", 422);
+    // Validasi semua foto dulu supaya tidak ada foto yang tersimpan setengah jalan.
+    const prepared = [];
     for (const file of files) {
-      if (!file?.arrayBuffer || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) return fail("Foto harus berformat JPG, PNG, atau WebP.", 422);
       if (file.size > 2 * 1024 * 1024) return fail(`Foto ${file.name} lebih besar dari 2 MB.`, 422);
       const bytes = Buffer.from(await file.arrayBuffer());
-      const { rows } = await query("INSERT INTO media (file_name,mime_type,file_size,data,created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id", [file.name, file.type, file.size, bytes, admin.id]);
-      uploaded.push({ id: rows[0].id, url: `/api/media/${rows[0].id}`, name: file.name });
+      const mimeType = detectImageType(bytes);
+      if (!mimeType) return fail(`${file.name} bukan foto JPG, PNG, atau WebP yang valid.`, 422);
+      prepared.push({ name: file.name || "foto", mimeType, bytes });
     }
-    return response({ success: true, data: uploaded }, 201);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const uploaded = [];
+      for (const file of prepared) {
+        const { rows } = await client.query("INSERT INTO media (file_name,mime_type,file_size,data,created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id", [file.name, file.mimeType, file.bytes.length, file.bytes, admin.id]);
+        uploaded.push({ id: rows[0].id, url: `/api/media/${rows[0].id}`, name: file.name });
+      }
+      await client.query("COMMIT");
+      return response({ success: true, data: uploaded }, 201);
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
 
   if (method === "GET" && route === "admin/dashboard") {
@@ -104,7 +122,7 @@ async function handler(request, context, method) {
   let match = route.match(/^admin\/products\/(\d+)$/);
   if (method === "PATCH" && match) {
     const input = await body(request);
-    const { rows } = await query(`UPDATE products SET name=COALESCE($1,name),description=COALESCE($2,description),price=$3,unit=COALESCE($4,unit),photo_url=COALESCE($5,photo_url),low_stock_threshold=COALESCE($6,low_stock_threshold),is_visible=COALESCE($7,is_visible),updated_at=now() WHERE id=$8 RETURNING *`, [input.name, input.description, input.price === "" ? null : input.price, input.unit, input.photoUrl, input.lowStockThreshold, input.isVisible, match[1]]);
+    const { rows } = await query(`UPDATE products SET name=COALESCE($1,name),description=COALESCE($2,description),price=CASE WHEN $9 THEN $3 ELSE price END,unit=COALESCE($4,unit),photo_url=COALESCE($5,photo_url),low_stock_threshold=COALESCE($6,low_stock_threshold),is_visible=COALESCE($7,is_visible),updated_at=now() WHERE id=$8 RETURNING *`, [input.name, input.description, input.price === "" ? null : input.price, input.unit, input.photoUrl, input.lowStockThreshold, input.isVisible, match[1], "price" in input]);
     return rows[0] ? ok(rows[0]) : fail("Produk tidak ditemukan.", 404);
   }
 
@@ -153,7 +171,7 @@ async function handler(request, context, method) {
   if (method === "PATCH" && match) {
     const input = await body(request);
     const { rows } = await query(`UPDATE activities SET title=COALESCE($1,title),category=COALESCE($2,category),activity_date=COALESCE($3,activity_date),summary=COALESCE($4,summary),content=COALESCE($5,content),photos=COALESCE($6,photos),is_published=COALESCE($7,is_published),updated_at=now() WHERE id=$8 RETURNING *`, [input.title, input.category, input.activityDate, input.summary, input.content, input.photos, input.isPublished, match[1]]);
-    return ok(rows[0]);
+    return rows[0] ? ok(rows[0]) : fail("Kegiatan tidak ditemukan.", 404);
   }
   if (method === "DELETE" && match) {
     await query("DELETE FROM activities WHERE id=$1", [match[1]]);
