@@ -1,3 +1,4 @@
+import "./load-env.mjs";
 import bcrypt from "bcryptjs";
 import { pool, query } from "../lib/db.js";
 
@@ -9,9 +10,15 @@ if (!password || password.length < 8) {
   process.exitCode = 1;
 } else {
   const passwordHash = await bcrypt.hash(password, 12);
-  await query(`INSERT INTO admins (name,email,password_hash) VALUES ($1,$2,$3)
+  try {
+    await query(`INSERT INTO admins (name,email,password_hash) VALUES ($1,$2,$3)
     ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash`, ["Pengelola Katalog", email.toLowerCase(), passwordHash]);
-  console.log(`Admin siap: ${email}`);
+    console.log(`Admin siap: ${email}`);
+  } catch (error) {
+    console.error(`Gagal menyiapkan admin: ${error.message}
+Jalankan npm run db:migrate dulu dan periksa DATABASE_URL di .env.local.`);
+    process.exitCode = 1;
+  }
 }
 
 await pool.end();

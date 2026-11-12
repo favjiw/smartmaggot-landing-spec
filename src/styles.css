@@ -72,7 +72,7 @@ html{scroll-padding-top:88px}
 .mission p{font-size:15px;line-height:1.7;margin:0;padding-top:18px;border-top:1px solid #bdcbbb;color:#536159}
 
 .programs{background:white;padding:88px 0}
-.program-heading{display:flex;justify-content:space-between;align-items:start;margin-bottom:36px}
+.program-heading{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px}
 .program-heading h2{font-size:36px;margin-bottom:12px}
 .program-heading p{color:var(--muted);max-width:500px;line-height:1.6}
 .cycle-mark{width:68px;height:68px;border:1px solid var(--soft-line);border-radius:50%;display:grid;place-items:center;color:var(--moss);font-size:34px}
@@ -86,7 +86,7 @@ html{scroll-padding-top:88px}
 .program-row-empty{grid-template-columns:50px 46px 1fr}
 
 .organization{padding:88px 0 96px;background:var(--chalk)}
-.organization-heading{display:flex;align-items:end;justify-content:space-between;margin-bottom:32px}
+.organization-heading{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px}
 .organization-heading h2{font-size:36px;margin:0}
 .organization-heading p{font-size:11px;color:var(--muted);margin:0}
 .people-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}

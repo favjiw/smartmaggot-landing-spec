@@ -93,7 +93,7 @@ function ImpactEditor() {
     } catch (err) { setMessage(err.message); }
   };
   if (!form) return null;
-  return <form className="admin-panel impact-editor" onSubmit={submit}><PanelTitle title="Dampak di landing page" subtitle="Angka publik yang tampil pada bagian atas situs." /><div className="form-grid"><label>Total sampah tereduksi (kg)<input type="number" min="0" step="0.1" value={form.totalWasteKg} onChange={(e) => setForm({ ...form, totalWasteKg: e.target.value })} /></label><label>Jumlah pencacahan<input type="number" min="0" value={form.processingCount} onChange={(e) => setForm({ ...form, processingCount: e.target.value })} /></label><label>Jumlah siklus<input type="number" min="0" value={form.cycleCount} onChange={(e) => setForm({ ...form, cycleCount: e.target.value })} /></label><label>Siklus panen<input type="number" min="0" value={form.harvestCycleCount} onChange={(e) => setForm({ ...form, harvestCycleCount: e.target.value })} /></label></div>{message && <div className={`form-alert ${message.includes("diperbarui") ? "success-bg" : "error"}`}>{message}</div>}<div className="form-actions"><button className="admin-button">Simpan Dampak</button></div></form>;
+  return <form className="admin-panel impact-editor" onSubmit={submit}><PanelTitle title="Dampak di landing page" subtitle="Cadangan untuk landing page. Jika API aplikasi Garda Hijau tersambung, angka dari aplikasi yang ditampilkan." /><div className="form-grid"><label>Total sampah tereduksi (kg)<input type="number" min="0" step="0.1" value={form.totalWasteKg} onChange={(e) => setForm({ ...form, totalWasteKg: e.target.value })} /></label><label>Jumlah pencacahan<input type="number" min="0" value={form.processingCount} onChange={(e) => setForm({ ...form, processingCount: e.target.value })} /></label><label>Jumlah siklus<input type="number" min="0" value={form.cycleCount} onChange={(e) => setForm({ ...form, cycleCount: e.target.value })} /></label><label>Siklus panen<input type="number" min="0" value={form.harvestCycleCount} onChange={(e) => setForm({ ...form, harvestCycleCount: e.target.value })} /></label></div>{message && <div className={`form-alert ${message.includes("diperbarui") ? "success-bg" : "error"}`}>{message}</div>}<div className="form-actions"><button className="admin-button">Simpan Dampak</button></div></form>;
 }
 
 function Stat({ label, value, note, tone = "" }) { return <article className={`stat-card ${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>; }
@@ -103,24 +103,66 @@ function ProductTable({ products, compact = false, onEdit, onStock }) {
   return <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Produk</th><th>Harga</th><th>Stok</th><th>Status katalog</th>{!compact && <th>Aksi</th>}</tr></thead><tbody>{products.map((item) => <tr key={item.id}><td><div className="product-cell"><img src={item.photo_url || "/assets/activities/panen.webp"} alt="" /><span><b>{item.name}</b><small>Diperbarui {new Date(item.updated_at).toLocaleDateString("id-ID")}</small></span></div></td><td>{item.price ? `Rp ${formatPrice(item.price)} / ${item.unit}` : <b className="green">Tanya harga</b>}</td><td><b className={item.stock <= 0 ? "red" : ""}>{Number(item.stock).toLocaleString("id-ID")} {item.unit}</b><small className={`pill ${stockClass(item.stock_status)}`}>{item.stock_status}</small></td><td><span className={`pill ${item.is_visible ? "success" : "neutral"}`}>{item.is_visible ? "Tampil" : "Tersembunyi"}</span></td>{!compact && <td className="row-actions"><button className="text-button action-edit" onClick={() => onEdit(item)}><Icon name="edit" size={16} />Ubah</button><button className="text-button action-stock" onClick={() => onStock(item)}><Icon name="stock" size={16} />Atur stok</button></td>}</tr>)}</tbody></table>{!products.length && <Empty text="Belum ada produk." />}</div>;
 }
 
-function PhotoUploader({ value = [], onChange, multiple = false, label = "Foto" }) {
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_SIDE = 1600;
+const MAX_PHOTOS_PER_UPLOAD = 10;
+const UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+const canvasToBlob = (canvas, type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+
+// Foto kamera HP biasanya 3–10 MB. Perkecil ke sisi terpanjang 1600 px dan kompres
+// supaya lolos batas 2 MB server dan cepat dimuat di landing page.
+async function compressPhoto(file) {
+  let bitmap;
+  try { bitmap = await createImageBitmap(file); }
+  catch { throw new Error(`"${file.name}" tidak bisa dibaca. Gunakan foto JPG, PNG, atau WebP.`); }
+  const scale = Math.min(1, MAX_PHOTO_SIDE / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size <= 500 * 1024 && UPLOAD_TYPES.includes(file.type)) { bitmap.close(); return file; }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#fff"; // latar putih untuk PNG transparan
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  for (const quality of [0.82, 0.7, 0.55]) {
+    let blob = await canvasToBlob(canvas, "image/webp", quality);
+    if (blob?.type !== "image/webp") blob = await canvasToBlob(canvas, "image/jpeg", quality); // Safari lama tidak bisa membuat WebP
+    if (blob && blob.size <= MAX_UPLOAD_BYTES) {
+      const extension = blob.type === "image/webp" ? "webp" : "jpg";
+      return new File([blob], `${file.name.replace(/.[^.]+$/, "") || "foto"}.${extension}`, { type: blob.type });
+    }
+  }
+  throw new Error(`"${file.name}" masih terlalu besar setelah dikompres. Coba foto lain.`);
+}
+
+function PhotoUploader({ value = [], onChange, onBusyChange, multiple = false, label = "Foto" }) {
   const inputId = useId();
-  const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const values = Array.isArray(value) ? value : value ? [value] : [];
+  const busy = Boolean(status);
+  const setBusy = (next) => { setStatus(next); onBusyChange?.(Boolean(next)); };
   const select = async (event) => {
-    const files = event.target.files;
-    if (!files?.length) return;
-    setUploading(true); setError("");
+    const input = event.target;
+    const files = Array.from(input.files ?? []);
+    input.value = ""; // supaya foto yang sama bisa dipilih lagi
+    if (!files.length) return;
+    setError("");
+    if (multiple && files.length > MAX_PHOTOS_PER_UPLOAD) { setError(`Pilih maksimal ${MAX_PHOTOS_PER_UPLOAD} foto sekaligus.`); return; }
     try {
-      const uploaded = await uploadPhotos(files);
-      const urls = uploaded.map((item) => item.url);
-      onChange(multiple ? [...values, ...urls] : urls[0]);
+      setBusy("Menyiapkan foto…");
+      const prepared = await Promise.all((multiple ? files : files.slice(0, 1)).map(compressPhoto));
+      setBusy("Sedang mengunggah…");
+      const urls = (await uploadPhotos(prepared)).map((item) => item.url);
+      // Pakai updater supaya tidak menimpa isian form yang diubah selama upload berjalan.
+      onChange(multiple ? (current = []) => [...current, ...urls] : urls[0]);
     } catch (err) { setError(err.message); }
-    finally { setUploading(false); event.target.value = ""; }
+    finally { setBusy(""); }
   };
-  const remove = (url) => onChange(multiple ? values.filter((item) => item !== url) : "");
-  return <div className="photo-uploader"><span className="field-label">{label}</span><label className="photo-drop" htmlFor={inputId}><input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" multiple={multiple} onChange={select} /><span className="upload-icon" aria-hidden="true">▧</span><b>{uploading ? "Sedang mengunggah…" : values.length ? "Tambah foto lain" : "Pilih foto dari HP"}</b><small>Tekan di sini untuk membuka kamera atau galeri. Maksimal 2 MB per foto.</small></label>{error && <p className="upload-error" role="alert">{error}</p>}{values.length > 0 && <div className="photo-preview-list">{values.map((url) => <figure key={url}><img src={url} alt="Pratinjau foto yang dipilih" /><button type="button" onClick={() => remove(url)} aria-label="Hapus foto">×</button></figure>)}</div>}</div>;
+  const remove = (url) => onChange(multiple ? (current = []) => current.filter((item) => item !== url) : "");
+  return <div className="photo-uploader"><span className="field-label">{label}</span><label className={`photo-drop ${busy ? "busy" : ""}`} htmlFor={inputId} aria-busy={busy}><input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" multiple={multiple} onChange={select} disabled={busy} /><span className="upload-icon" aria-hidden="true">▧</span><b>{status || (values.length ? (multiple ? "Tambah foto lain" : "Ganti foto") : "Pilih foto dari HP")}</b><small>Tekan di sini untuk membuka kamera atau galeri. Foto besar otomatis diperkecil.</small></label>{error && <p className="upload-error" role="alert">{error}</p>}{values.length > 0 && <div className="photo-preview-list">{values.map((url) => <figure key={url}><img src={url} alt="Pratinjau foto yang dipilih" /><button type="button" onClick={() => remove(url)} aria-label="Hapus foto" disabled={busy}>×</button></figure>)}</div>}</div>;
 }
 
 const emptyProduct = { name: "", description: "", price: "", unit: "kg", photoUrl: "", lowStockThreshold: 5, isVisible: true };
@@ -130,12 +172,13 @@ function Products() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyProduct);
   const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
   const closeForm = () => { setEditing(null); setForm(emptyProduct); setFormOpen(false); };
   const edit = (item) => { setEditing(item); setForm({ name: item.name, description: item.description, price: item.price ?? "", unit: item.unit, photoUrl: item.photo_url ?? "", lowStockThreshold: item.low_stock_threshold, isVisible: item.is_visible }); setFormOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const submit = async (event) => { event.preventDefault(); setMessage(""); try { await apiFetch(editing ? `/admin/products/${editing.id}` : "/admin/products", { method: editing ? "PATCH" : "POST", body: JSON.stringify(form) }); setMessage("Produk berhasil disimpan dan katalog sudah diperbarui."); closeForm(); reload(); } catch (err) { setMessage(err.message); } };
   return <Shell title="Produk"><main className="admin-main"><PageHeading title="Produk" subtitle="Atur barang yang dapat dilihat dan dipesan warga." action="＋ Tambah produk" onAction={() => { setEditing(null); setForm(emptyProduct); setFormOpen(true); }} />
     {(error || message) && <div className={`form-alert ${message.includes("berhasil") ? "success-bg" : "error"}`} role="status">{error || message}</div>}
-    {formOpen && <form className="admin-panel product-form friendly-form" onSubmit={submit}><PanelTitle title={editing ? `Ubah ${editing.name}` : "Tambah produk baru"} subtitle="Isi informasi yang akan dilihat pembeli di halaman utama." /><div className="form-grid"><label>Nama produk <span className="required">Wajib</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Contoh: Maggot segar" required /></label><label>Harga jual (rupiah)<input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Kosongkan jika harga belum pasti" /><small>Jika kosong, pembeli akan melihat tulisan “Tanya harga”.</small></label><label className="wide">Keterangan singkat <span className="required">Wajib</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Jelaskan kegunaan produk dengan bahasa sederhana." required /></label><div className="wide"><PhotoUploader value={form.photoUrl} onChange={(photoUrl) => setForm({ ...form, photoUrl })} label="Foto produk" /></div><label>Satuan penjualan<select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}><option value="kg">Kilogram (kg)</option><option value="karung">Karung</option><option value="kemasan">Kemasan</option></select></label><label>Peringatan stok menipis<input type="number" min="0" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} /><small>Peringatan muncul saat stok mencapai jumlah ini.</small></label><label className="check wide"><input type="checkbox" checked={form.isVisible} onChange={(e) => setForm({ ...form, isVisible: e.target.checked })} /><span><b>Tampilkan di katalog</b><small>Matikan jika produk sedang tidak dijual.</small></span></label></div><div className="form-actions"><button type="button" className="button-secondary" onClick={closeForm}>Batal</button><button className="admin-button">{editing ? "Simpan perubahan" : "Tambahkan produk"}</button></div></form>}
+    {formOpen && <form className="admin-panel product-form friendly-form" onSubmit={submit}><PanelTitle title={editing ? `Ubah ${editing.name}` : "Tambah produk baru"} subtitle="Isi informasi yang akan dilihat pembeli di halaman utama." /><div className="form-grid"><label>Nama produk <span className="required">Wajib</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Contoh: Maggot segar" required /></label><label>Harga jual (rupiah)<input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Kosongkan jika harga belum pasti" /><small>Jika kosong, pembeli akan melihat tulisan “Tanya harga”.</small></label><label className="wide">Keterangan singkat <span className="required">Wajib</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Jelaskan kegunaan produk dengan bahasa sederhana." required /></label><div className="wide"><PhotoUploader value={form.photoUrl} onChange={(photoUrl) => setForm((current) => ({ ...current, photoUrl }))} onBusyChange={setUploading} label="Foto produk" /></div><label>Satuan penjualan<select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}><option value="kg">Kilogram (kg)</option><option value="karung">Karung</option><option value="kemasan">Kemasan</option></select></label><label>Peringatan stok menipis<input type="number" min="0" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} /><small>Peringatan muncul saat stok mencapai jumlah ini.</small></label><label className="check wide"><input type="checkbox" checked={form.isVisible} onChange={(e) => setForm({ ...form, isVisible: e.target.checked })} /><span><b>Tampilkan di katalog</b><small>Matikan jika produk sedang tidak dijual.</small></span></label></div><div className="form-actions"><button type="button" className="button-secondary" onClick={closeForm}>Batal</button><button className="admin-button" disabled={uploading}>{uploading ? "Menunggu foto…" : editing ? "Simpan perubahan" : "Tambahkan produk"}</button></div></form>}
     <section className="admin-panel table-panel"><PanelTitle title="Daftar produk" subtitle={`${products.length} produk tersimpan`} /><ProductTable products={products} onEdit={edit} onStock={(item) => location.assign(`/admin/stok?produk=${item.id}`)} /></section>
   </main></Shell>;
 }
@@ -151,12 +194,12 @@ function Stock() {
 
 const emptyActivity = { title: "", category: "Kegiatan Warga", activityDate: "", summary: "", content: "", photos: [], isPublished: true };
 function ActivitiesAdmin() {
-  const { data: activities = [], reload } = useLoad("/admin/activities", []); const [editing, setEditing] = useState(null); const [formOpen, setFormOpen] = useState(false); const [form, setForm] = useState(emptyActivity); const [message, setMessage] = useState("");
+  const { data: activities = [], reload } = useLoad("/admin/activities", []); const [editing, setEditing] = useState(null); const [formOpen, setFormOpen] = useState(false); const [form, setForm] = useState(emptyActivity); const [message, setMessage] = useState(""); const [uploading, setUploading] = useState(false);
   const edit = (item) => { setEditing(item); setForm({ title: item.title, category: item.category, activityDate: String(item.activity_date).slice(0,10), summary: item.summary, content: item.content, photos: item.photos, isPublished: item.is_published }); setFormOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const closeForm = () => { setForm(emptyActivity); setEditing(null); setFormOpen(false); };
   const submit = async (event) => { event.preventDefault(); try { await apiFetch(editing ? `/admin/activities/${editing.id}` : "/admin/activities", { method: editing ? "PATCH" : "POST", body: JSON.stringify(form) }); setMessage("Kegiatan berhasil disimpan."); closeForm(); reload(); } catch (err) { setMessage(err.message); } };
   const remove = async (item) => { if (!confirm(`Hapus “${item.title}”?`)) return; await apiFetch(`/admin/activities/${item.id}`, { method: "DELETE" }); reload(); };
-  return <Shell title="Kegiatan"><main className="admin-main"><PageHeading title="Kegiatan" subtitle="Bagikan cerita panen, pelatihan, dan kegiatan warga." action="＋ Tambah kegiatan" onAction={() => { setEditing(null); setForm(emptyActivity); setFormOpen(true); }} />{message && <div className="form-alert success-bg" role="status">{message}</div>}{formOpen && <form className="admin-panel activity-form friendly-form" onSubmit={submit}><PanelTitle title={editing ? `Ubah ${editing.title}` : "Ceritakan kegiatan baru"} subtitle="Tuliskan seperti sedang bercerita kepada warga." /><div className="form-grid"><label className="wide">Judul kegiatan <span className="required">Wajib</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Panen maggot bersama warga RW 03" required /></label><label>Tanggal kegiatan <span className="required">Wajib</span><input type="date" value={form.activityDate} onChange={(e) => setForm({ ...form, activityDate: e.target.value })} required /></label><label>Jenis kegiatan<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Contoh: Panen dan produksi" /></label><label className="wide">Ringkasan singkat <span className="required">Wajib</span><textarea maxLength="200" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="Satu atau dua kalimat tentang kegiatan ini." required /></label><label className="wide">Cerita lengkap <span className="required">Wajib</span><textarea className="tall" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Ceritakan siapa yang terlibat, apa yang dilakukan, dan hasilnya." required /></label><div className="wide"><PhotoUploader value={form.photos} multiple onChange={(photos) => setForm({ ...form, photos })} label="Foto dokumentasi" /></div><label className="check wide"><input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} /><span><b>Tampilkan di situs</b><small>Jika dimatikan, kegiatan disimpan sebagai draf.</small></span></label></div><div className="form-actions"><button type="button" className="button-secondary" onClick={closeForm}>Batal</button><button className="admin-button">{editing ? "Simpan perubahan" : "Terbitkan kegiatan"}</button></div></form>}
+  return <Shell title="Kegiatan"><main className="admin-main"><PageHeading title="Kegiatan" subtitle="Bagikan cerita panen, pelatihan, dan kegiatan warga." action="＋ Tambah kegiatan" onAction={() => { setEditing(null); setForm(emptyActivity); setFormOpen(true); }} />{message && <div className="form-alert success-bg" role="status">{message}</div>}{formOpen && <form className="admin-panel activity-form friendly-form" onSubmit={submit}><PanelTitle title={editing ? `Ubah ${editing.title}` : "Ceritakan kegiatan baru"} subtitle="Tuliskan seperti sedang bercerita kepada warga." /><div className="form-grid"><label className="wide">Judul kegiatan <span className="required">Wajib</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Panen maggot bersama warga RW 03" required /></label><label>Tanggal kegiatan <span className="required">Wajib</span><input type="date" value={form.activityDate} onChange={(e) => setForm({ ...form, activityDate: e.target.value })} required /></label><label>Jenis kegiatan<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Contoh: Panen dan produksi" /></label><label className="wide">Ringkasan singkat <span className="required">Wajib</span><textarea maxLength="200" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="Satu atau dua kalimat tentang kegiatan ini." required /></label><label className="wide">Cerita lengkap <span className="required">Wajib</span><textarea className="tall" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Ceritakan siapa yang terlibat, apa yang dilakukan, dan hasilnya." required /></label><div className="wide"><PhotoUploader value={form.photos} multiple onChange={(next) => setForm((current) => ({ ...current, photos: typeof next === "function" ? next(current.photos) : next }))} onBusyChange={setUploading} label="Foto dokumentasi" /></div><label className="check wide"><input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} /><span><b>Tampilkan di situs</b><small>Jika dimatikan, kegiatan disimpan sebagai draf.</small></span></label></div><div className="form-actions"><button type="button" className="button-secondary" onClick={closeForm}>Batal</button><button className="admin-button" disabled={uploading}>{uploading ? "Menunggu foto…" : editing ? "Simpan perubahan" : "Terbitkan kegiatan"}</button></div></form>}
     <section className="admin-panel table-panel"><PanelTitle title="Daftar kegiatan" subtitle={`${activities.length} kegiatan tersimpan`} /><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Kegiatan</th><th>Tanggal</th><th>Foto</th><th>Status</th><th>Aksi</th></tr></thead><tbody>{activities.map((item) => <tr key={item.id}><td><b>{item.title}</b><small>/{item.slug}</small></td><td>{new Date(item.activity_date).toLocaleDateString("id-ID")}</td><td>{item.photos.length} foto</td><td><span className={`pill ${item.is_published ? "success" : "neutral"}`}>{item.is_published ? "Terbit" : "Draf"}</span></td><td><button className="text-button" onClick={() => edit(item)}>Ubah</button><button className="text-button red" onClick={() => remove(item)}>Hapus</button></td></tr>)}</tbody></table></div></section>
   </main></Shell>;
 }
