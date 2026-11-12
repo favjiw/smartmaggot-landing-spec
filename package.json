@@ -1,0 +1,21 @@
+{
+  "name": "smartmaggot-landing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare:logos": "node scripts/prepare-logos.mjs"
+  },
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest"
+  },
+  "devDependencies": {
+    "sharp": "0.34.5",
+    "vite": "6.4.6"
+  }
+}
