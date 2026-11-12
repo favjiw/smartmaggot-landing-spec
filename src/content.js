@@ -2,11 +2,11 @@ export const content = {
   whatsapp: "6281234567890",
   address: "Jl. Sukamulya A, Mengger, Kec. Bandung Kidul, Kota Bandung, Jawa Barat 40267",
   mapsUrl: "https://www.google.com/maps?q=-6.960887,107.636193",
-  mapsEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d247.52561711228682!2d107.63589376745911!3d-6.960881400000002!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e9006795b20b%3A0x91b6bda2825f6fc3!2sRumah%20Maggot%20Kelurahan%20Mengger!5e0!3m2!1sid!2sid!4v1794464434471!5m2!1sid!2sid",
+  mapsEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.4099187932807!2d107.633479775846!3d-6.96087606815471!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e9006795b20b%3A0x91b6bda2825f6fc3!2sRumah%20Maggot%20Kelurahan%20Mengger!5e0!3m2!1sid!2sid!4v1794484691598!5m2!1sid!2sid",
   programs: [
-    ["▣", "Pemilahan Sampah Warga", "Warga memilah sampah organik sisa dapur langsung dari rumah untuk diangkut teratur oleh petugas."],
-    ["↻", "Biokonversi Hanggar Maggot", "Larva Black Soldier Fly mengurai sampah basah menjadi biomassa kaya nutrisi dalam 24 jam."],
-    ["▤", "Produksi Kasgot & Pakan", "Menghasilkan pupuk organik kasgot kaya hara mikro dan larva pakan berprotein tinggi bagi peternak lokal."],
+    ["01", "Program 1", ""],
+    ["02", "Program 2", ""],
+    ["03", "Program 3", ""],
   ],
   products: [
     { id: "maggot-segar", name: "Maggot Segar", description: "Larva BSF segar berprotein tinggi untuk pakan ikan dan unggas.", price: 8000, unit: "kg", status: "Tersedia", photo: 0 },
