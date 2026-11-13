@@ -152,6 +152,8 @@ npm start
 
 Aplikasi berjalan pada port `3000` secara default. Tempatkan reverse proxy HTTPS di depan aplikasi dan atur backup PostgreSQL secara berkala. Jangan gunakan `ADMIN_PASSWORD` contoh pada deployment.
 
+Untuk VPS Ubuntu kosong, ikuti [DEPLOY.md](DEPLOY.md). Panduan itu memakai `deploy/setup-server.sh` untuk memasang semuanya: Nginx, PostgreSQL, HTTPS, service systemd, dan backup.
+
 ## Pemecahan masalah
 
 - **`password authentication failed` atau koneksi ditolak:** periksa user, kata sandi, dan port di `DATABASE_URL` pada `.env.local`, serta pastikan service PostgreSQL berjalan.
