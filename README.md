@@ -10,6 +10,14 @@ Landing page dan halaman admin untuk katalog produk Garda Hijau. Aplikasi memaka
 - Pergerakan stok dicatat sebagai riwayat masuk, keluar, atau penyesuaian. Stok tersedia dihitung dari seluruh riwayat.
 - Foto produk dan kegiatan dapat dipilih dari kamera/galeri lalu disimpan ke PostgreSQL.
 - Login admin menggunakan email dan kata sandi. API admin dilindungi token.
+- **Aplikasi web pengelola di `/app`**: versi web aplikasi Android Garda Hijau Mengger, untuk HP yang tidak bisa memasang APK (termasuk iPhone). Isinya sama dengan aplikasi Android: masuk/daftar, catat sampah dan grafik 7 hari, siklus maggot dan perkiraan panen (AI), GardaBot, serta notifikasi. Akun dan datanya sama dengan aplikasi Android.
+
+## Aplikasi web (`/app`)
+
+- Kode ada di `src/app-web/` (layar di `screens/`), rutenya di `app/app/`. Teks, warna, font, dan logika mengikuti repo [garda-hijau-mengger-mobile](https://github.com/favjiw/garda-hijau-mengger-mobile).
+- Aplikasi memanggil backend Maggot BEM di `/api` pada domain yang sama. Di server, Nginx meneruskan `/api` ke backend. Saat `npm run dev`, Next.js meneruskannya ke `https://gardahijaukemdiktisaintek.digital`; isi `BACKEND_API_URL` untuk memakai backend lain, mis. `BACKEND_API_URL=http://127.0.0.1:5001`.
+- Bisa dipasang ke layar utama HP (PWA). Manifest dan ikon ada di `public/ghm/`.
+- Token login disimpan di `localStorage` perangkat. Saat server membalas 401, pengguna diarahkan ke halaman Masuk.
 
 ## Kebutuhan
 

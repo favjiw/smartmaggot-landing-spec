@@ -1,0 +1,18 @@
+{
+  "name": "Garda Hijau Mengger",
+  "short_name": "Garda Hijau",
+  "description": "Catat sampah yang masuk dan pantau kandang maggot di RW-mu.",
+  "lang": "id",
+  "start_url": "/app",
+  "scope": "/app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f1",
+  "theme_color": "#1e5b3a",
+  "icons": [
+    { "src": "/ghm/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/ghm/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/ghm/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/ghm/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
