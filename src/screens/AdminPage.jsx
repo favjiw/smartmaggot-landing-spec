@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { apiFetch, uploadPhotos } from "../api";
+import { API_URL, apiFetch, uploadPhotos } from "../api";
 import { formatPrice } from "../components";
 
 function NavLink({ to, end = false, children, className = "" }) {
@@ -10,9 +10,9 @@ function NavLink({ to, end = false, children, className = "" }) {
   return <a href={to} className={`${className} ${active ? "active" : ""}`.trim()}>{children}</a>;
 }
 
-const navItems = [["/admin", "home", "Ringkasan"], ["/admin/produk", "box", "Produk"], ["/admin/stok", "arrows", "Stok"], ["/admin/kegiatan", "calendar", "Kegiatan"], ["/admin/pengaturan", "settings", "Pengaturan"]];
+const navItems = [["/admin", "home", "Ringkasan"], ["/admin/sampah", "trash", "Sampah Masuk"], ["/admin/produk", "box", "Produk"], ["/admin/stok", "arrows", "Stok"], ["/admin/kegiatan", "calendar", "Kegiatan"], ["/admin/pengaturan", "settings", "Pengaturan"]];
 function Icon({ name, size = 20 }) {
-  const paths = { home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></>, box: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z"/><path d="m3.3 7.6 8.7 4.7 8.7-4.7M12 12.3V21"/></>, arrows: <><path d="M12 3v18M7 8l5-5 5 5M17 16l-5 5-5-5"/></>, calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>, settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></>, edit: <><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m13.8 6.7 3.5 3.5M12 21h9"/></>, stock: <><path d="M4 7h16M4 12h16M4 17h16"/><path d="m8 4-4 3 4 3M16 14l4 3-4 3"/></>, logout: <><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></> };
+  const paths = { home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></>, trash: <><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></>, download: <><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></>, box: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z"/><path d="m3.3 7.6 8.7 4.7 8.7-4.7M12 12.3V21"/></>, arrows: <><path d="M12 3v18M7 8l5-5 5 5M17 16l-5 5-5-5"/></>, calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>, settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></>, edit: <><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m13.8 6.7 3.5 3.5M12 21h9"/></>, stock: <><path d="M4 7h16M4 12h16M4 17h16"/><path d="m8 4-4 3 4 3M16 14l4 3-4 3"/></>, logout: <><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></> };
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 const dateTime = (value) => new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -215,6 +215,122 @@ function Settings() {
   </main></Shell>;
 }
 
+// ===================== Sampah masuk (pemantauan kelurahan)
+
+const RW_SAMPAH = ["RW4", "RW5"];
+const ymdWib = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
+const geserHari = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+const kgTeks = (n) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(Number(n) || 0)} kg`;
+const tglPendek = (ymd) => new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${ymd}T00:00:00Z`));
+const waktuWib = (iso) => new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(iso));
+const rwLabel = (rw) => rw ? rw.replace("RW", "RW ") : "—";
+
+function rentangPreset(kode) {
+  const hariIni = ymdWib(new Date());
+  if (kode === "7") return { dari: geserHari(hariIni, -6), sampai: hariIni };
+  if (kode === "30") return { dari: geserHari(hariIni, -29), sampai: hariIni };
+  if (kode === "bulan") return { dari: `${hariIni.slice(0, 8)}01`, sampai: hariIni };
+  const akhirBulanLalu = geserHari(`${hariIni.slice(0, 8)}01`, -1);
+  return { dari: `${akhirBulanLalu.slice(0, 8)}01`, sampai: akhirBulanLalu };
+}
+const PRESET = [["7", "7 hari"], ["30", "30 hari"], ["bulan", "Bulan ini"], ["lalu", "Bulan lalu"]];
+
+function GrafikSampah({ harian, rwAktif }) {
+  const max = Math.max(1, ...harian.map((h) => h.totalKg));
+  const tampilLabel = (i) => harian.length <= 14 || i % Math.ceil(harian.length / 10) === 0 || i === harian.length - 1;
+  return <div className="sampah-chart" style={{ gridTemplateColumns: `repeat(${harian.length}, minmax(0, 1fr))` }} role="img" aria-label={`Sampah masuk per hari, ${harian.length} hari`}>
+    {harian.map((h, i) => <div className="sampah-hari" key={h.tanggal} title={`${tglPendek(h.tanggal)}: ${kgTeks(h.totalKg)}${rwAktif.length > 1 ? ` (${rwAktif.map((rw) => `${rwLabel(rw)} ${kgTeks(h.perRw[rw])}`).join(", ")})` : ""}`}>
+      <div className="sampah-batang">{rwAktif.map((rw) => <span key={rw} className={`seg ${rw.toLowerCase()}`} style={{ height: `${(Number(h.perRw[rw]) || 0) / max * 100}%` }} />)}</div>
+      <small>{tampilLabel(i) ? tglPendek(h.tanggal) : ""}</small>
+    </div>)}
+  </div>;
+}
+
+function SampahMasuk() {
+  const awal = rentangPreset("30");
+  const [filter, setFilter] = useState({ dari: awal.dari, sampai: awal.sampai, rw: "" });
+  const [preset, setPreset] = useState("30");
+  const [state, setState] = useState({ data: null, error: "", loading: true });
+  const [mengunduh, setMengunduh] = useState(false);
+  const [pesanUnduh, setPesanUnduh] = useState("");
+  const qs = new URLSearchParams({ dari: filter.dari, sampai: filter.sampai, ...(filter.rw ? { rw: filter.rw } : {}) }).toString();
+  const rentangValid = filter.dari && filter.sampai && filter.dari <= filter.sampai;
+
+  useEffect(() => {
+    if (!rentangValid) return undefined;
+    let batal = false;
+    setState((s) => ({ ...s, loading: true, error: "" }));
+    apiFetch(`/admin/sampah?${qs}`)
+      .then((data) => { if (!batal) setState({ data, error: "", loading: false }); })
+      .catch((err) => { if (!batal) setState((s) => ({ ...s, error: err.message, loading: false })); });
+    return () => { batal = true; };
+  }, [qs, rentangValid]);
+
+  const pilihPreset = (kode) => { const r = rentangPreset(kode); setPreset(kode); setFilter((f) => ({ ...f, dari: r.dari, sampai: r.sampai })); };
+  const ubahTanggal = (key, value) => { setPreset(""); setFilter((f) => ({ ...f, [key]: value })); };
+
+  const unduh = async () => {
+    setMengunduh(true); setPesanUnduh("");
+    try {
+      const token = localStorage.getItem("gardahijau_admin_token");
+      const res = await fetch(`${API_URL}/admin/sampah/export?${qs}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message ?? "File Excel gagal dibuat.");
+      const nama = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "sampah-masuk.xlsx";
+      const url = URL.createObjectURL(await res.blob());
+      const a = Object.assign(document.createElement("a"), { href: url, download: nama });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) { setPesanUnduh(err.message); }
+    finally { setMengunduh(false); }
+  };
+
+  const r = state.data?.ringkasan;
+  const rows = [...(state.data?.rows ?? [])].reverse();
+  const rwAktif = filter.rw ? [filter.rw] : RW_SAMPAH;
+  return <Shell title="Sampah Masuk"><main className="admin-main">
+    <header className="admin-page-heading sampah-heading"><div><h1>Sampah Masuk</h1><p>Sampah yang dicatat petugas setiap RW lewat aplikasi Garda Hijau. Waktu dalam WIB.</p></div><button className="admin-button" onClick={unduh} disabled={mengunduh || !rentangValid}><Icon name="download" size={17} /> {mengunduh ? "Menyiapkan file…" : "Export Excel"}</button></header>
+    {pesanUnduh && <div className="form-alert error" role="alert">{pesanUnduh}</div>}
+
+    <section className="admin-panel sampah-filter" aria-label="Filter">
+      <div className="sampah-preset" role="group" aria-label="Rentang cepat">{PRESET.map(([kode, label]) => <button key={kode} type="button" className={preset === kode ? "active" : ""} aria-pressed={preset === kode} onClick={() => pilihPreset(kode)}>{label}</button>)}</div>
+      <div className="sampah-filter-isian">
+        <label>Dari tanggal<input type="date" value={filter.dari} max={filter.sampai || undefined} onChange={(e) => ubahTanggal("dari", e.target.value)} /></label>
+        <label>Sampai tanggal<input type="date" value={filter.sampai} min={filter.dari || undefined} onChange={(e) => ubahTanggal("sampai", e.target.value)} /></label>
+        <label>RW<select value={filter.rw} onChange={(e) => setFilter((f) => ({ ...f, rw: e.target.value }))}><option value="">Semua RW</option>{RW_SAMPAH.map((rw) => <option key={rw} value={rw}>{rwLabel(rw)}</option>)}</select></label>
+      </div>
+      {!rentangValid && <div className="form-alert error">Tanggal akhir tidak boleh sebelum tanggal awal.</div>}
+    </section>
+
+    {state.error && <div className="form-alert error" role="alert">{state.error}</div>}
+    {state.loading && !r && <p className="sampah-memuat" role="status">Memuat data sampah…</p>}
+
+    {r && <div className={state.loading ? "sampah-isi memuat" : "sampah-isi"} aria-busy={state.loading}>
+      <section className="stat-grid" aria-label="Ringkasan sampah masuk">
+        <Stat label="Total sampah masuk" value={kgTeks(r.totalKg)} note={`${tglPendek(r.periode.dari)} – ${tglPendek(r.periode.sampai)}`} />
+        <Stat label="Rata-rata per hari" value={kgTeks(r.rataPerHariKg)} note={`dari ${r.periode.jumlahHari} hari`} />
+        <Stat label="Jumlah catatan" value={r.jumlahCatatan} note={`${r.hariAdaCatatan} hari ada catatan`} />
+        <Stat label="Hari tertinggi" value={r.hariTertinggi ? kgTeks(r.hariTertinggi.totalKg) : "—"} note={r.hariTertinggi ? tglPendek(r.hariTertinggi.tanggal) : "belum ada data"} tone="warning" />
+      </section>
+
+      <section className="admin-panel">
+        <PanelTitle title="Sampah masuk per hari" subtitle="Arahkan kursor ke batang untuk melihat angkanya" action={rwAktif.length > 1 && <div className="chart-legend">{rwAktif.map((rw) => <span key={rw}><i className={`seg ${rw.toLowerCase()}`} />{rwLabel(rw)}</span>)}</div>} />
+        <GrafikSampah harian={r.harian} rwAktif={rwAktif} />
+      </section>
+
+      <div className="dashboard-grid sampah-grid">
+        <section className="admin-panel">
+          <PanelTitle title="Per RW" subtitle="Total dalam periode ini" />
+          <div className="sampah-rw">{r.perRw.map((g) => <div key={g.rw}><span><b>{rwLabel(g.rw)}</b><small>{g.jumlahCatatan} catatan</small></span><strong>{kgTeks(g.totalKg)}</strong><div className="sampah-rw-bar"><i className={`seg ${g.rw.toLowerCase()}`} style={{ width: `${r.totalKg ? g.totalKg / r.totalKg * 100 : 0}%` }} /></div></div>)}</div>
+        </section>
+        <section className="admin-panel table-panel">
+          <PanelTitle title="Catatan" subtitle={`${rows.length} catatan, terbaru di atas`} />
+          {rows.length ? <div className="admin-table-wrap sampah-tabel"><table className="admin-table"><thead><tr><th>Waktu</th><th>RW</th><th>Petugas</th><th>Berat</th><th>Catatan</th></tr></thead><tbody>{rows.map((x) => <tr key={x.id}><td>{waktuWib(x.tanggalWaktu)}</td><td>{rwLabel(x.rw)}</td><td>{x.petugas ?? "—"}</td><td><b>{kgTeks(x.totalSampahKg)}</b></td><td>{x.catatan || "—"}</td></tr>)}</tbody></table></div> : <div className="admin-empty"><b>Belum ada sampah tercatat di periode ini.</b><span>Petugas mencatat sampah lewat aplikasi Garda Hijau di HP.</span></div>}
+        </section>
+      </div>
+    </div>}
+  </main></Shell>;
+}
+
 function PageHeading({ title, subtitle, action, onAction }) { return <header className="admin-page-heading"><div><h1>{title}</h1><p>{subtitle}</p></div>{action && <button className="admin-button" onClick={onAction}>{action}</button>}</header>; }
 function Empty({ text }) { return <div className="admin-empty"><b>{text}</b><span>Tambahkan data baru untuk mulai mengelola konten.</span></div>; }
 
@@ -227,6 +343,7 @@ export function AdminPage({ section = "" }) {
     window.location.replace("/admin/login");
     return null;
   }
+  if (section === "sampah") return <SampahMasuk />;
   if (section === "produk") return <Products />;
   if (section === "stok") return <Stock />;
   if (section === "kegiatan") return <ActivitiesAdmin />;

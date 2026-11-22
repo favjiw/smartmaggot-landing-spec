@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createToken, readAdmin } from "../../../lib/auth";
 import { pool, query } from "../../../lib/db";
 import { getPublicCatalog, getPublicImpact } from "../../../lib/public-data";
+import { ambilSampahMasuk, bacaFilter, buatExcel, namaFileExcel, ringkas, SampahError } from "../../../lib/sampah-masuk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,6 +106,27 @@ async function handler(request, context, method) {
         GROUP BY days.day ORDER BY days.day`),
     ]);
     return ok({ products: products.rows, movements: movements.rows, chart: chart.rows });
+  }
+
+  // Pemantauan sampah masuk semua RW (data dari backend aplikasi Garda Hijau)
+  if (method === "GET" && (route === "admin/sampah" || route === "admin/sampah/export")) {
+    try {
+      const filter = bacaFilter(new URL(request.url).searchParams);
+      const rows = await ambilSampahMasuk(filter);
+      const ringkasan = ringkas(rows, filter);
+      if (route === "admin/sampah") return ok({ ringkasan, rows });
+      const file = await buatExcel(rows, ringkasan);
+      return new NextResponse(new Uint8Array(file), {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${namaFileExcel(filter)}"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    } catch (error) {
+      if (error instanceof SampahError) return fail(error.message, error.status);
+      throw error;
+    }
   }
 
   if (method === "GET" && route === "admin/products") {
