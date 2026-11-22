@@ -132,8 +132,8 @@ export function DaftarScreen() {
         <IsianSandi label="Kata sandi" value={password} onChange={(e) => { setPassword(e.target.value); setGalat({ ...galat, password: null }); }} galat={galat.password} placeholder="Buat kata sandi" autoComplete="new-password" />
         <fieldset className="ghm-fieldset">
           <legend>Kamu mengelola RW berapa?</legend>
-          <div className="ghm-pilihan-grid dua" role="radiogroup">
-            {["RW4", "RW5"].map((v) => (
+          <div className="ghm-pilihan-grid tiga" role="radiogroup">
+            {["RW1", "RW2", "RW3", "RW4", "RW5"].map((v) => (
               <Pilihan key={v} dipilih={rw === v} onClick={() => { setRw(v); setGalat({ ...galat, rw: null }); }}>{v.replace("RW", "RW ")}</Pilihan>
             ))}
           </div>

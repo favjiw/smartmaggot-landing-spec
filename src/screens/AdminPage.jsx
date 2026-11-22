@@ -217,7 +217,7 @@ function Settings() {
 
 // ===================== Sampah masuk (pemantauan kelurahan)
 
-const RW_SAMPAH = ["RW4", "RW5"];
+const RW_SAMPAH = ["RW1", "RW2", "RW3", "RW4", "RW5"];
 const ymdWib = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
 const geserHari = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const kgTeks = (n) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(Number(n) || 0)} kg`;
@@ -234,6 +234,13 @@ function rentangPreset(kode) {
   return { dari: `${akhirBulanLalu.slice(0, 8)}01`, sampai: akhirBulanLalu };
 }
 const PRESET = [["7", "7 hari"], ["30", "30 hari"], ["bulan", "Bulan ini"], ["lalu", "Bulan lalu"]];
+const BULAN_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+/** Minggu (Senin–Minggu) yang memuat tanggal `ymd`. Label mengikuti laporan kecamatan: "Minggu ke-3 November 2026". */
+function mingguDari(ymd) {
+  const senin = geserHari(ymd, -((new Date(`${ymd}T00:00:00Z`).getUTCDay() + 6) % 7));
+  const [y, bln, d] = senin.split("-").map(Number);
+  return { senin, label: `Minggu ke-${Math.ceil(d / 7)} ${BULAN_ID[bln - 1]} ${y}`, rentang: `${tglPendek(senin)} – ${tglPendek(geserHari(senin, 6))}` };
+}
 
 function GrafikSampah({ harian, rwAktif }) {
   const max = Math.max(1, ...harian.map((h) => h.totalKg));
@@ -253,6 +260,8 @@ function SampahMasuk() {
   const [state, setState] = useState({ data: null, error: "", loading: true });
   const [mengunduh, setMengunduh] = useState(false);
   const [pesanUnduh, setPesanUnduh] = useState("");
+  const [tanggalExport, setTanggalExport] = useState(() => ymdWib(new Date()));
+  const mingguExport = tanggalExport ? mingguDari(tanggalExport) : null;
   const qs = new URLSearchParams({ dari: filter.dari, sampai: filter.sampai, ...(filter.rw ? { rw: filter.rw } : {}) }).toString();
   const rentangValid = filter.dari && filter.sampai && filter.dari <= filter.sampai;
 
@@ -273,9 +282,11 @@ function SampahMasuk() {
     setMengunduh(true); setPesanUnduh("");
     try {
       const token = localStorage.getItem("gardahijau_admin_token");
-      const res = await fetch(`${API_URL}/admin/sampah/export?${qs}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(`${API_URL}/admin/sampah/export?minggu=${tanggalExport}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.message ?? "File Excel gagal dibuat.");
-      const nama = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "sampah-masuk.xlsx";
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const utf8 = /filename\*=UTF-8''([^;]+)/.exec(cd)?.[1];
+      const nama = utf8 ? decodeURIComponent(utf8) : /filename="([^"]+)"/.exec(cd)?.[1] ?? "laporan-sampah.xlsx";
       const url = URL.createObjectURL(await res.blob());
       const a = Object.assign(document.createElement("a"), { href: url, download: nama });
       document.body.appendChild(a); a.click(); a.remove();
@@ -288,7 +299,13 @@ function SampahMasuk() {
   const rows = [...(state.data?.rows ?? [])].reverse();
   const rwAktif = filter.rw ? [filter.rw] : RW_SAMPAH;
   return <Shell title="Sampah Masuk"><main className="admin-main">
-    <header className="admin-page-heading sampah-heading"><div><h1>Sampah Masuk</h1><p>Sampah yang dicatat petugas setiap RW lewat aplikasi Garda Hijau. Waktu dalam WIB.</p></div><button className="admin-button" onClick={unduh} disabled={mengunduh || !rentangValid}><Icon name="download" size={17} /> {mengunduh ? "Menyiapkan file…" : "Export Excel"}</button></header>
+    <header className="admin-page-heading"><div><h1>Sampah Masuk</h1><p>Sampah yang dicatat petugas setiap RW lewat aplikasi Garda Hijau. Waktu dalam WIB.</p></div></header>
+
+    <section className="admin-panel sampah-export" aria-label="Export laporan mingguan">
+      <div><h2>Laporan mingguan (Excel)</h2><p>Format sama dengan laporan GASLAH, MAGGOT &amp; GOBER kecamatan. Angka masuk ke kolom Sampah Terkumpul per RW; dokumentasi, sampah diolah, dan kegiatan Gober diisi manual.</p></div>
+      <label>Pilih tanggal<input type="date" value={tanggalExport} onChange={(e) => setTanggalExport(e.target.value)} /><small>{mingguExport ? `File berisi ${mingguExport.label} (${mingguExport.rentang}).` : "Pilih tanggal dulu."}</small></label>
+      <button className="admin-button" onClick={unduh} disabled={mengunduh || !tanggalExport}><Icon name="download" size={17} /> {mengunduh ? "Menyiapkan file…" : "Export Excel"}</button>
+    </section>
     {pesanUnduh && <div className="form-alert error" role="alert">{pesanUnduh}</div>}
 
     <section className="admin-panel sampah-filter" aria-label="Filter">

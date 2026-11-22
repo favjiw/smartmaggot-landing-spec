@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createToken, readAdmin } from "../../../lib/auth";
 import { pool, query } from "../../../lib/db";
 import { getPublicCatalog, getPublicImpact } from "../../../lib/public-data";
-import { ambilSampahMasuk, bacaFilter, buatExcel, namaFileExcel, ringkas, SampahError } from "../../../lib/sampah-masuk";
+import { ambilSampahMasuk, bacaFilter, bacaMinggu, buatExcel, namaFileExcel, ringkas, SampahError } from "../../../lib/sampah-masuk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,15 +111,21 @@ async function handler(request, context, method) {
   // Pemantauan sampah masuk semua RW (data dari backend aplikasi Garda Hijau)
   if (method === "GET" && (route === "admin/sampah" || route === "admin/sampah/export")) {
     try {
-      const filter = bacaFilter(new URL(request.url).searchParams);
-      const rows = await ambilSampahMasuk(filter);
-      const ringkasan = ringkas(rows, filter);
-      if (route === "admin/sampah") return ok({ ringkasan, rows });
-      const file = await buatExcel(rows, ringkasan);
+      const params = new URL(request.url).searchParams;
+      if (route === "admin/sampah") {
+        const filter = bacaFilter(params);
+        const rows = await ambilSampahMasuk(filter);
+        return ok({ ringkasan: ringkas(rows, filter), rows });
+      }
+      // Export mengikuti format laporan mingguan kecamatan (Senin–Minggu, semua RW)
+      const minggu = bacaMinggu(params);
+      const rows = await ambilSampahMasuk({ dari: minggu.senin, sampai: minggu.minggu, rw: "" });
+      const file = await buatExcel(rows, minggu);
+      const nama = namaFileExcel(minggu);
       return new NextResponse(new Uint8Array(file), {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${namaFileExcel(filter)}"`,
+          "Content-Disposition": `attachment; filename="${nama.replace(/[^ -~]|"/g, "")}"; filename*=UTF-8''${encodeURIComponent(nama)}`,
           "Cache-Control": "no-store",
         },
       });

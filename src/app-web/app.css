@@ -233,6 +233,7 @@ textarea.ghm-input { resize: vertical; min-height: 80px; }
 
 .ghm-pilihan-grid { display: grid; gap: 10px; }
 .ghm-pilihan-grid.dua { grid-template-columns: 1fr 1fr; }
+.ghm-pilihan-grid.tiga { grid-template-columns: repeat(3, 1fr); }
 .ghm-pilihan {
   min-height: 56px;
   padding: 10px 14px 10px 16px;

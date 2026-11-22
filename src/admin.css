@@ -37,13 +37,13 @@
 .admin-button:disabled{opacity:.6;cursor:not-allowed}
 
 /* ---------- Sampah masuk (pemantauan kelurahan) ---------- */
-.sampah-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}.sampah-heading .admin-button{width:auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .sampah-filter{padding:18px 20px;display:grid;gap:14px;margin-bottom:20px}
 .sampah-preset{display:flex;flex-wrap:wrap;gap:8px}.sampah-preset button{min-height:38px;padding:0 14px;border-radius:99px;border:1px solid var(--admin-line);background:#fff;color:var(--admin-ink);font:600 12px inherit;cursor:pointer}.sampah-preset button.active{background:var(--admin-pale);border-color:var(--admin-green);color:var(--admin-green)}.sampah-preset button:focus-visible{outline:3px solid #e8b94a;outline-offset:2px}
 .sampah-filter-isian{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.sampah-filter-isian label{display:grid;gap:6px}
 .sampah-memuat{color:#617168;font-size:13px;padding:8px 0}
 .sampah-isi{display:grid;gap:20px;transition:opacity .2s}.sampah-isi.memuat{opacity:.55}.sampah-isi>.stat-grid{margin:0}
-.seg.rw4{background:var(--admin-green)}.seg.rw5{background:#9bd8b5}
+/* Satu warna per RW: hijau tua ke muda + kuning, bisa dibedakan di grafik bertumpuk */
+.seg.rw1{background:#0f5132}.seg.rw2{background:var(--admin-green)}.seg.rw3{background:#4fae7f}.seg.rw4{background:#9bd8b5}.seg.rw5{background:#e8b94a}
 .sampah-chart{height:240px;margin:0 24px 24px;padding:14px 4px 0;display:grid;gap:3px;align-items:end;border-bottom:1px solid #bfcfc3;background:repeating-linear-gradient(to bottom,#edf3ee 0,#edf3ee 1px,transparent 1px,transparent 25%)}
 .sampah-hari{height:100%;display:grid;grid-template-rows:1fr 26px;min-width:0}.sampah-batang{display:flex;flex-direction:column-reverse;justify-content:flex-start;align-items:center;height:100%}.sampah-batang .seg{width:min(26px,80%);display:block}.sampah-batang .seg:last-child{border-radius:6px 6px 0 0}.sampah-hari:hover .sampah-batang{filter:brightness(.92)}
 .sampah-hari>small{font-size:9px;color:#6f7f75;text-align:center;white-space:nowrap;padding-top:7px;overflow:visible}
@@ -53,8 +53,10 @@
 @media(max-width:1050px){.sampah-grid{grid-template-columns:1fr}}
 @media(max-width:700px){
   .admin-sidebar nav{grid-template-columns:repeat(6,1fr)}
-  .sampah-heading{display:grid}.sampah-heading .admin-button{width:100%;justify-content:center}
   .sampah-filter{padding:14px}.sampah-filter-isian{grid-template-columns:1fr 1fr}.sampah-filter-isian label:last-child{grid-column:1/-1}
   .sampah-chart{height:190px;margin:0 12px 18px;gap:1px}.sampah-hari>small{font-size:8px}
   .sampah-rw{padding:0 16px 18px}.sampah-tabel{max-height:none}
 }
+.sampah-export{padding:18px 20px;margin-bottom:20px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr) auto;gap:16px;align-items:end}.sampah-export h2{font-size:15px;margin:0 0 4px}.sampah-export p{margin:0;font-size:12px;line-height:1.55;color:#617168}.sampah-export label{display:grid;gap:6px}.sampah-export .admin-button{width:auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+@media(max-width:1050px){.sampah-export{grid-template-columns:1fr 1fr}.sampah-export>div{grid-column:1/-1}}
+@media(max-width:700px){.sampah-export{grid-template-columns:1fr;padding:14px}.sampah-export .admin-button{width:100%;justify-content:center}}
