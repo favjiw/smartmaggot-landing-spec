@@ -33,7 +33,7 @@ const activityPhotos = ["panen", "pemilahan", "pelatihan", "sosialisasi", "kasgo
 
 // Data cadangan ketika database belum tersedia, berbentuk sama dengan respons /api/public/catalog.
 export const fallbackPublic = {
-  products: content.products.map((product) => ({ ...product, photo_url: product.photoUrl ?? `/assets/activities/${activityPhotos[product.photo] ?? "panen"}.webp`, stock_status: product.status })),
+  products: content.products.map((product) => ({ ...product, slug: product.slug ?? product.id, photo_url: product.photoUrl ?? `/assets/activities/${activityPhotos[product.photo] ?? "panen"}.webp`, stock_status: product.status })),
   activities: content.activities.map((activity) => ({ ...activity, activity_date: activity.date, photos: [`/assets/activities/${activityPhotos[activity.photo]}.webp`] })),
   settings: { partner_name: "Sinergi Garda Hijau Mengger", whatsapp: content.whatsapp, address: content.address, show_catalog: true, show_stock_status: true },
 };

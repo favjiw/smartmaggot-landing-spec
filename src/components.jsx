@@ -8,7 +8,10 @@ import { usePublicData } from "./api";
 export const formatDate = (iso) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${iso}T00:00:00`));
 export const formatPrice = (value) => new Intl.NumberFormat("id-ID").format(value);
 export const waLink = (message = "Halo, saya ingin bertanya tentang produk dan program Garda Hijau Mengger.", phone = content.whatsapp) => `https://wa.me/${phone || content.whatsapp}?text=${encodeURIComponent(message)}`;
-export const productMessage = (product) => `Halo Garda Hijau Mengger, saya tertarik dan ingin memesan ${product.name}. Apakah produknya masih tersedia? Boleh minta info harga dan cara pemesanannya? Terima kasih.`;
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://gardahijaukemdiktisaintek.digital").replace(/\/+$/, "");
+/** Link halaman produk; WhatsApp menampilkan foto produk sebagai pratinjau link ini. */
+export const productUrl = (product) => `${SITE_URL}/produk/${product.slug ?? product.id}`;
+export const productMessage = (product) => `Halo Garda Hijau Mengger, saya tertarik dan ingin memesan ${product.name}. Apakah produknya masih tersedia? Boleh minta info harga dan cara pemesanannya? Terima kasih.\n\n${productUrl(product)}`;
 
 /** Pembuat link WhatsApp yang memakai nomor dari pengaturan admin. */
 export function useWaLink() {
