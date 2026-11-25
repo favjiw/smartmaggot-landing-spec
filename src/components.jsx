@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { content } from "./content";
-import { usePublicData } from "./api";
+import { tokenBerlaku, usePublicData } from "./api";
 
 export const formatDate = (iso) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${iso}T00:00:00`));
 export const formatPrice = (value) => new Intl.NumberFormat("id-ID").format(value);
@@ -29,12 +29,15 @@ export function Photo({ index = 0, src, className = "", alt = "Dokumentasi kegia
 }
 
 export function Header() {
+  // Admin yang masih punya sesi berlaku melihat "Dashboard", bukan "Login". Dibaca setelah mount supaya hasil render server tetap sama.
+  const [adminMasuk, setAdminMasuk] = useState(false);
+  useEffect(() => setAdminMasuk(tokenBerlaku(localStorage.getItem("gardahijau_admin_token"))), []);
   const [menuOpen, setMenuOpen] = useState(false);
   const wa = useWaLink();
   return <header className="site-header"><div className="header-inner">
     <Link href="/" className="brand" aria-label="Sinergi Garda Hijau, Kelurahan Mengger, beranda"><img className="brand-mark" src="/assets/logos/garda-hijau.png" alt="" /><span><b>Sinergi Garda Hijau</b><small>Kelurahan Mengger</small></span></Link>
-    <nav className={menuOpen ? "open" : ""} aria-label="Navigasi utama"><Link onClick={() => setMenuOpen(false)} href="/profil">Profil</Link><a onClick={() => setMenuOpen(false)} href="/#produk">Produk</a><Link onClick={() => setMenuOpen(false)} href="/kegiatan">Kegiatan</Link><a onClick={() => setMenuOpen(false)} href="/#kontak">Kontak</a><a className="app-download" onClick={() => setMenuOpen(false)} href="https://github.com/favjiw/garda-hijau-mengger-mobile/releases/download/v1.1.0/garda-hijau-mengger-v1.1.0.apk" download><img src="/assets/logos/download-app.webp" alt="" aria-hidden="true" />Unduh aplikasi</a><Link className="app-web" onClick={() => setMenuOpen(false)} href="/app">Aplikasi web</Link><Link className="mobile-menu-login" onClick={() => setMenuOpen(false)} href="/admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.1a7.5 7.5 0 0 1 15 0 17.9 17.9 0 0 1-7.5 1.65 17.9 17.9 0 0 1-7.5-1.65Z" /></svg>Login pengelola</Link></nav>
-    <Link className="header-login" href="/admin" aria-label="Login admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.1a7.5 7.5 0 0 1 15 0 17.9 17.9 0 0 1-7.5 1.65 17.9 17.9 0 0 1-7.5-1.65Z" /></svg><span>Login</span></Link>
+    <nav className={menuOpen ? "open" : ""} aria-label="Navigasi utama"><Link onClick={() => setMenuOpen(false)} href="/profil">Profil</Link><a onClick={() => setMenuOpen(false)} href="/#produk">Produk</a><Link onClick={() => setMenuOpen(false)} href="/kegiatan">Kegiatan</Link><a onClick={() => setMenuOpen(false)} href="/#kontak">Kontak</a><a className="app-download" onClick={() => setMenuOpen(false)} href="https://github.com/favjiw/garda-hijau-mengger-mobile/releases/download/v1.1.0/garda-hijau-mengger-v1.1.0.apk" download><img src="/assets/logos/download-app.webp" alt="" aria-hidden="true" />Unduh aplikasi</a><Link className="app-web" onClick={() => setMenuOpen(false)} href="/app">Aplikasi web</Link><Link className="mobile-menu-login" onClick={() => setMenuOpen(false)} href={adminMasuk ? "/admin" : "/admin/login"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">{adminMasuk ? <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.1a7.5 7.5 0 0 1 15 0 17.9 17.9 0 0 1-7.5 1.65 17.9 17.9 0 0 1-7.5-1.65Z" />}</svg>{adminMasuk ? "Dashboard pengelola" : "Login pengelola"}</Link></nav>
+    <Link className="header-login" href={adminMasuk ? "/admin" : "/admin/login"} aria-label={adminMasuk ? "Buka dashboard admin" : "Login admin"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">{adminMasuk ? <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.1a7.5 7.5 0 0 1 15 0 17.9 17.9 0 0 1-7.5 1.65 17.9 17.9 0 0 1-7.5-1.65Z" />}</svg><span>{adminMasuk ? "Dashboard" : "Login"}</span></Link>
     <a className="button header-wa" href={wa()} target="_blank" rel="noreferrer"><WhatsAppIcon /><span className="desktop-brand">Chat WA</span><span className="mobile-brand">WA</span></a>
     <button className="menu" aria-label={menuOpen ? "Tutup menu" : "Buka menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}><span /><span /><span /></button>
   </div></header>;
