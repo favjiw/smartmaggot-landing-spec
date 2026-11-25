@@ -20,6 +20,6 @@ export function ActivityDetailPage({ slug }) {
     <figure className="hero-figure"><Photo index={activity.photo} src={activity.photos?.[0]} className="detail-hero" alt={activity.title} /><figcaption>Dokumentasi kegiatan Sinergi Garda Hijau Mengger.</figcaption></figure>
     <article className="detail-copy">{paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}</article>
     {activity.photos?.length > 1 && <section className="documentation"><div className="section-heading"><div><span className="kicker">DOKUMENTASI</span><h2>Dokumentasi Pendukung Kegiatan</h2></div></div><div className="gallery">{activity.photos.slice(1).map((src) => <Photo src={src} key={src} />)}</div></section>}
-    <aside className="article-cta"><div><h2>Tertarik hasil maggot & kasgot?</h2><p>Pesan produk hasil pengolahan atau ajukan kunjungan edukasi ke Hanggar Mengger.</p></div><a className="button" href={wa()} target="_blank" rel="noreferrer"><WhatsAppIcon /> Pesan via WhatsApp</a></aside>
+    <aside className="article-cta"><div><h2>Tertarik produk olahan maggot?</h2><p>Pesan pelet maggot, maggot bubuk, atau maggot kering atau ajukan kunjungan edukasi ke Hanggar Mengger.</p></div><a className="button" href={wa()} target="_blank" rel="noreferrer"><WhatsAppIcon /> Pesan via WhatsApp</a></aside>
   </div></main><Footer /></>;
 }

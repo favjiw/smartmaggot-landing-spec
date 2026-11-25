@@ -1,5 +1,5 @@
 export const content = {
-  whatsapp: "6281234567890",
+  whatsapp: "6281313404144",
   address: "Jl. Sukamulya A, Mengger, Kec. Bandung Kidul, Kota Bandung, Jawa Barat 40267",
   mapsUrl: "https://www.google.com/maps?q=-6.960887,107.636193",
   mapsEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.4099187932807!2d107.633479775846!3d-6.96087606815471!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e9006795b20b%3A0x91b6bda2825f6fc3!2sRumah%20Maggot%20Kelurahan%20Mengger!5e0!3m2!1sid!2sid!4v1794484691598!5m2!1sid!2sid",
@@ -9,9 +9,9 @@ export const content = {
     ["03", "Program 3", ""],
   ],
   products: [
-    { id: "maggot-segar", name: "Maggot Segar", description: "Larva BSF segar berprotein tinggi untuk pakan ikan dan unggas.", price: 8000, unit: "kg", status: "Tersedia", photo: 0, photoUrl: "/assets/products/maggot-segar.webp" },
-    { id: "kasgot", name: "Kasgot (Pupuk Organik)", description: "Pupuk organik padat kaya mikroba untuk menyuburkan tanaman sayur dan hias.", price: 15000, unit: "karung", status: "Tersedia", photo: 4 },
-    { id: "maggot-kering", name: "Maggot Kering", description: "Pakan bernutrisi dengan masa simpan lebih panjang dan mudah didistribusikan.", price: 45000, unit: "kg", status: "Pre-order", photo: 5 },
+    { id: "pelet-maggot", name: "Pelet Maggot", description: "Pelet pakan dari campuran maggot, dedak, dan jagung bubuk. Kaya protein untuk ikan dan unggas.", price: null, unit: "kg", status: "Tersedia", photo: 0, photoUrl: "/assets/products/pelet-maggot.webp" },
+    { id: "maggot-bubuk", name: "Maggot Bubuk", description: "Tepung dari maggot kering yang digiling halus, kaya protein untuk campuran pakan ternak.", price: null, unit: "kg", status: "Tersedia", photo: 0, photoUrl: "/assets/products/maggot-bubuk.webp" },
+    { id: "maggot-kering", name: "Maggot Kering", description: "Maggot BSF yang disangrai hingga kering, kaya nutrisi dan tahan simpan lebih lama untuk pakan ternak.", price: null, unit: "kg", status: "Tersedia", photo: 5, photoUrl: "/assets/products/maggot-kering.webp" },
   ],
   activities: [
     { slug: "panen-perdana-maggot", category: "Panen & Produksi", date: "2026-11-10", title: "Panen Raya Maggot Siklus ke-24 di Hanggar Mengger", summary: "Keberhasilan panen biomassa maggot BSF seberat 420 kg untuk kebutuhan pakan peternak lokal.", photo: 0 },

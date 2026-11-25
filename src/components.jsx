@@ -8,9 +8,7 @@ import { usePublicData } from "./api";
 export const formatDate = (iso) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${iso}T00:00:00`));
 export const formatPrice = (value) => new Intl.NumberFormat("id-ID").format(value);
 export const waLink = (message = "Halo, saya ingin bertanya tentang produk dan program Garda Hijau Mengger.", phone = content.whatsapp) => `https://wa.me/${phone || content.whatsapp}?text=${encodeURIComponent(message)}`;
-export const productMessage = (product) => product.price
-  ? `Halo, saya ingin memesan ${product.name} (Rp ${formatPrice(product.price)}/${product.unit}) dari Garda Hijau Mengger. Apakah masih tersedia?`
-  : `Halo, saya ingin menanyakan harga dan ketersediaan ${product.name} dari Garda Hijau Mengger.`;
+export const productMessage = (product) => `Halo Garda Hijau Mengger, saya tertarik dan ingin memesan ${product.name}. Apakah produknya masih tersedia? Boleh minta info harga dan cara pemesanannya? Terima kasih.`;
 
 /** Pembuat link WhatsApp yang memakai nomor dari pengaturan admin. */
 export function useWaLink() {
