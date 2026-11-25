@@ -58,5 +58,6 @@
   .sampah-rw{padding:0 16px 18px}.sampah-tabel{max-height:none}
 }
 .sampah-export{padding:18px 20px;margin-bottom:20px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr) auto;gap:16px;align-items:end}.sampah-export h2{font-size:15px;margin:0 0 4px}.sampah-export p{margin:0;font-size:12px;line-height:1.55;color:#617168}.sampah-export label{display:grid;gap:6px}.sampah-export .admin-button{width:auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.sampah-export-aksi{display:flex;flex-wrap:wrap;gap:10px}
 @media(max-width:1050px){.sampah-export{grid-template-columns:1fr 1fr}.sampah-export>div{grid-column:1/-1}}
-@media(max-width:700px){.sampah-export{grid-template-columns:1fr;padding:14px}.sampah-export .admin-button{width:100%;justify-content:center}}
+@media(max-width:700px){.sampah-export{grid-template-columns:1fr;padding:14px}.sampah-export .admin-button{width:100%;justify-content:center}.sampah-export-aksi{flex-direction:column}}

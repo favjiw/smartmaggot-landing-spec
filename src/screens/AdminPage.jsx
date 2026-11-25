@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { API_URL, apiFetch, uploadPhotos } from "../api";
+import { API_URL, akhiriSesi, apiFetch, tokenBerlaku, uploadPhotos } from "../api";
 import { formatPrice } from "../components";
 
 function NavLink({ to, end = false, children, className = "" }) {
@@ -12,7 +12,7 @@ function NavLink({ to, end = false, children, className = "" }) {
 
 const navItems = [["/admin", "home", "Ringkasan"], ["/admin/sampah", "trash", "Sampah Masuk"], ["/admin/produk", "box", "Produk"], ["/admin/stok", "arrows", "Stok"], ["/admin/kegiatan", "calendar", "Kegiatan"], ["/admin/pengaturan", "settings", "Pengaturan"]];
 function Icon({ name, size = 20 }) {
-  const paths = { home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></>, trash: <><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></>, download: <><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></>, box: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z"/><path d="m3.3 7.6 8.7 4.7 8.7-4.7M12 12.3V21"/></>, arrows: <><path d="M12 3v18M7 8l5-5 5 5M17 16l-5 5-5-5"/></>, calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>, settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></>, edit: <><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m13.8 6.7 3.5 3.5M12 21h9"/></>, stock: <><path d="M4 7h16M4 12h16M4 17h16"/><path d="m8 4-4 3 4 3M16 14l4 3-4 3"/></>, logout: <><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></> };
+  const paths = { eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>, eyeOff: <><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.16 3.19M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></>, home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></>, trash: <><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></>, download: <><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></>, box: <><path d="m12 3 9 4.5v9L12 21l-9-4.5v-9L12 3Z"/><path d="m3.3 7.6 8.7 4.7 8.7-4.7M12 12.3V21"/></>, arrows: <><path d="M12 3v18M7 8l5-5 5 5M17 16l-5 5-5-5"/></>, calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>, settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></>, edit: <><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m13.8 6.7 3.5 3.5M12 21h9"/></>, stock: <><path d="M4 7h16M4 12h16M4 17h16"/><path d="m8 4-4 3 4 3M16 14l4 3-4 3"/></>, logout: <><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></> };
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 const dateTime = (value) => new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -31,6 +31,11 @@ function useLoad(path, seed = null) {
 function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [lihatSandi, setLihatSandi] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("sesi") === "berakhir") setInfo("Sesi Anda sudah berakhir. Silakan masuk lagi.");
+  }, []);
   const submit = async (event) => {
     event.preventDefault(); setError("");
     try {
@@ -40,7 +45,7 @@ function Login() {
       window.location.assign("/admin");
     } catch (err) { setError(err.message); }
   };
-  return <main className="admin-login"><form onSubmit={submit} className="login-card"><div className="admin-logo"><img className="admin-logo-image" src="/assets/logos/garda-hijau.png" alt="" /><b>Garda Hijau</b></div><h1>Masuk ke ruang pengelola</h1><p>Kelola stok dan konten situs publik dalam satu tempat.</p>{error && <div className="form-alert error">{error}</div>}<label>Email<input type="email" autoComplete="username" placeholder="Ketik email admin" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label><label>Kata sandi<input type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label><button className="admin-button" type="submit">Masuk</button><a href="/">← Kembali ke situs publik</a></form></main>;
+  return <main className="admin-login"><form onSubmit={submit} className="login-card"><div className="admin-logo"><img className="admin-logo-image" src="/assets/logos/garda-hijau.png" alt="" /><b>Garda Hijau</b></div><h1>Masuk ke ruang pengelola</h1><p>Kelola stok dan konten situs publik dalam satu tempat.</p>{info && !error && <div className="form-alert success-bg">{info}</div>}{error && <div className="form-alert error">{error}</div>}<label>Email<input type="email" autoComplete="username" placeholder="Ketik email admin" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label><label>Kata sandi<span className="password-field"><input type={lihatSandi ? "text" : "password"} autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /><button type="button" className="password-toggle" onClick={() => setLihatSandi((v) => !v)} aria-label={lihatSandi ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"} aria-pressed={lihatSandi} title={lihatSandi ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}><Icon name={lihatSandi ? "eyeOff" : "eye"} size={19} /></button></span></label><button className="admin-button" type="submit">Masuk</button><a href="/">← Kembali ke situs publik</a></form></main>;
 }
 
 function Shell({ children, title }) {
@@ -278,11 +283,12 @@ function SampahMasuk() {
   const pilihPreset = (kode) => { const r = rentangPreset(kode); setPreset(kode); setFilter((f) => ({ ...f, dari: r.dari, sampai: r.sampai })); };
   const ubahTanggal = (key, value) => { setPreset(""); setFilter((f) => ({ ...f, [key]: value })); };
 
-  const unduh = async () => {
-    setMengunduh(true); setPesanUnduh("");
+  const unduh = async (versi) => {
+    setMengunduh(versi); setPesanUnduh("");
     try {
       const token = localStorage.getItem("gardahijau_admin_token");
-      const res = await fetch(`${API_URL}/admin/sampah/export?minggu=${tanggalExport}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(`${API_URL}/admin/sampah/export?minggu=${tanggalExport}&versi=${versi}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (res.status === 401) { akhiriSesi(); return; }
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.message ?? "File Excel gagal dibuat.");
       const cd = res.headers.get("Content-Disposition") ?? "";
       const utf8 = /filename\*=UTF-8''([^;]+)/.exec(cd)?.[1];
@@ -302,9 +308,12 @@ function SampahMasuk() {
     <header className="admin-page-heading"><div><h1>Sampah Masuk</h1><p>Sampah yang dicatat petugas setiap RW lewat aplikasi Garda Hijau. Waktu dalam WIB.</p></div></header>
 
     <section className="admin-panel sampah-export" aria-label="Export laporan mingguan">
-      <div><h2>Laporan mingguan (Excel)</h2><p>Format sama dengan laporan GASLAH, MAGGOT &amp; GOBER kecamatan. Angka masuk ke kolom Sampah Terkumpul per RW; dokumentasi, sampah diolah, dan kegiatan Gober diisi manual.</p></div>
+      <div><h2>Laporan mingguan (Excel)</h2><p>Format sama dengan laporan GASLAH, MAGGOT &amp; GOBER kecamatan. <strong>Per RW:</strong> angka masuk ke kolom Sampah Terkumpul tiap RW. <strong>Kelurahan:</strong> semua RW digabung jadi satu baris Mengger di kolom Jumlah (Kg) Petugas Magot. Dokumentasi dan kolom lain diisi manual.</p></div>
       <label>Pilih tanggal<input type="date" value={tanggalExport} onChange={(e) => setTanggalExport(e.target.value)} /><small>{mingguExport ? `File berisi ${mingguExport.label} (${mingguExport.rentang}).` : "Pilih tanggal dulu."}</small></label>
-      <button className="admin-button" onClick={unduh} disabled={mengunduh || !tanggalExport}><Icon name="download" size={17} /> {mengunduh ? "Menyiapkan file…" : "Export Excel"}</button>
+      <div className="sampah-export-aksi">
+        <button className="admin-button" onClick={() => unduh("rw")} disabled={Boolean(mengunduh) || !tanggalExport}><Icon name="download" size={17} /> {mengunduh === "rw" ? "Menyiapkan file…" : "Export per RW"}</button>
+        <button className="admin-button" onClick={() => unduh("kelurahan")} disabled={Boolean(mengunduh) || !tanggalExport}><Icon name="download" size={17} /> {mengunduh === "kelurahan" ? "Menyiapkan file…" : "Export Kelurahan"}</button>
+      </div>
     </section>
     {pesanUnduh && <div className="form-alert error" role="alert">{pesanUnduh}</div>}
 
@@ -352,12 +361,21 @@ function PageHeading({ title, subtitle, action, onAction }) { return <header cla
 function Empty({ text }) { return <div className="admin-empty"><b>{text}</b><span>Tambahkan data baru untuk mulai mengelola konten.</span></div>; }
 
 export function AdminPage({ section = "" }) {
-  const [session, setSession] = useState({ ready: false, token: null });
-  useEffect(() => setSession({ ready: true, token: localStorage.getItem("gardahijau_admin_token") }), []);
+  const [session, setSession] = useState({ ready: false, valid: false, expired: false });
+  useEffect(() => {
+    const token = localStorage.getItem("gardahijau_admin_token");
+    const valid = tokenBerlaku(token);
+    // Token kedaluwarsa dibuang dulu, supaya halaman login tidak mengira masih masuk.
+    if (token && !valid) { localStorage.removeItem("gardahijau_admin_token"); localStorage.removeItem("gardahijau_admin_user"); }
+    setSession({ ready: true, valid, expired: Boolean(token) && !valid });
+  }, []);
   if (!session.ready) return null;
-  if (section === "login") return session.token ? <Dashboard /> : <Login />;
-  if (!session.token) {
-    window.location.replace("/admin/login");
+  if (section === "login") {
+    if (session.valid) { window.location.replace("/admin"); return null; }
+    return <Login />;
+  }
+  if (!session.valid) {
+    window.location.replace(session.expired ? "/admin/login?sesi=berakhir" : "/admin/login");
     return null;
   }
   if (section === "sampah") return <SampahMasuk />;

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createToken, readAdmin } from "../../../lib/auth";
 import { pool, query } from "../../../lib/db";
 import { getPublicCatalog, getPublicImpact } from "../../../lib/public-data";
-import { ambilSampahMasuk, bacaFilter, bacaMinggu, buatExcel, namaFileExcel, ringkas, SampahError } from "../../../lib/sampah-masuk";
+import { ambilSampahMasuk, bacaFilter, bacaMinggu, buatExcel, buatExcelKelurahan, namaFileExcel, ringkas, SampahError } from "../../../lib/sampah-masuk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,11 +117,13 @@ async function handler(request, context, method) {
         const rows = await ambilSampahMasuk(filter);
         return ok({ ringkasan: ringkas(rows, filter), rows });
       }
-      // Export mengikuti format laporan mingguan kecamatan (Senin–Minggu, semua RW)
+      // Export mengikuti format laporan mingguan kecamatan (Senin–Minggu, semua RW).
+      // ?versi=kelurahan: semua RW digabung jadi satu baris kelurahan (lembar GOBER & MAGGOT).
+      const versi = params.get("versi") === "kelurahan" ? "kelurahan" : "rw";
       const minggu = bacaMinggu(params);
       const rows = await ambilSampahMasuk({ dari: minggu.senin, sampai: minggu.minggu, rw: "" });
-      const file = await buatExcel(rows, minggu);
-      const nama = namaFileExcel(minggu);
+      const file = versi === "kelurahan" ? await buatExcelKelurahan(rows, minggu) : await buatExcel(rows, minggu);
+      const nama = namaFileExcel(minggu, versi);
       return new NextResponse(new Uint8Array(file), {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
