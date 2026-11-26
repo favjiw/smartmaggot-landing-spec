@@ -31,10 +31,20 @@ export function formatKg(value) {
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
-/** Selisih hari kalender (zona waktu perangkat) dari `mulai` sampai hari ini; tidak pernah negatif. */
-export function hariSejak(mulai) {
-  return Math.max(0, Math.round((startOfDay(new Date()) - startOfDay(mulai)) / 86_400_000));
+/** Selisih hari kalender (zona waktu perangkat) dari `mulai` sampai `sampai` (bawaan: hari ini); tidak pernah negatif. */
+export function hariSejak(mulai, sampai = new Date()) {
+  return Math.max(0, Math.round((startOfDay(sampai) - startOfDay(mulai)) / 86_400_000));
 }
+
+/** Tanggal `d` digeser `hari` hari kalender (jam tetap). */
+export function geserHari(d, hari) {
+  const x = new Date(d.getTime());
+  x.setDate(x.getDate() + hari);
+  return x;
+}
+
+/** Dua tanggal di hari kalender yang sama (zona waktu perangkat). */
+export const samaHari = (a, b) => !!a && !!b && startOfDay(a) === startOfDay(b);
 
 export const hariKeTeks = (mulai) => {
   if (!mulai) return "";
@@ -53,12 +63,14 @@ export const tanggalPendek = fmt({ day: "numeric", month: "short", year: "numeri
 export const jam = (d) => (d ? new Intl.DateTimeFormat(ID, { hour: "2-digit", minute: "2-digit", hour12: false }).format(d).replace(":", ".") : "");
 export const hariSingkat = fmt({ weekday: "short" });
 export const hariPenuh = fmt({ weekday: "long" });
+/** Kamis, 19 Nov */
+export const hariTanggalSingkat = fmt({ weekday: "long", day: "numeric", month: "short" });
 export const angkaTanggal = fmt({ day: "numeric" });
 export const bulanSingkat = fmt({ month: "short" });
 
 /** "6–12 November" bila bulannya sama, "28 Okt – 3 Nov" bila berbeda. */
 export function rentangTanggal(start, end) {
-  if (start.getMonth() === end.getMonth()) {
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
     return `${angkaTanggal(start)}–${fmt({ day: "numeric", month: "long" })(end)}`;
   }
   const short = fmt({ day: "numeric", month: "short" });

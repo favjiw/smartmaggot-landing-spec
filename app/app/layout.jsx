@@ -22,7 +22,7 @@ const bricolage = localFont({
 
 export const metadata = {
   title: { default: "Garda Hijau Mengger", template: "%s · Garda Hijau Mengger" },
-  description: "Catat sampah yang masuk dan pantau kandang maggot di RW-mu.",
+  description: "Catat sampah organik yang masuk dan pantau kandang maggot di RW-mu.",
   manifest: "/ghm/manifest.webmanifest",
   applicationName: "Garda Hijau Mengger",
   appleWebApp: { capable: true, title: "Garda Hijau", statusBarStyle: "default" },

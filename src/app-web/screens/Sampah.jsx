@@ -2,55 +2,45 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { antrekan, JENIS, PESAN_TERSIMPAN_DI_HP, perluDiantrekan, useAntrean } from "../antrean";
 import { api, pesanDari } from "../api";
-import {
-  angkaTanggal, bacaAngka, bulanSingkat, capital, formatKg, hariPenuh, hariSingkat, jam, nilaiInputJam,
-  nilaiInputTanggal, parseServerDate, rentangTanggal, tanggalPanjang, tanggalSedang,
-} from "../format";
+import { ambilFoto, hapusFoto, kecilkanFoto, simpanFoto } from "../foto";
+import { angkaTanggal, bacaAngka, bulanSingkat, formatKg, jam, nilaiInputJam, nilaiInputTanggal, parseServerDate, tanggalPanjang, tanggalSedang } from "../format";
 import { useMuat } from "../hooks";
 import { IconBell, IconChevron, IconJam, IconKalender, IconKeluar, IconKurang, IconTambah } from "../icons";
+import { PILIHAN_RENTANG, rekapan } from "../rekapan";
 import { useRequireAuth, useSession } from "../session";
-import { BilahAtas, Dialog, GalatMuat, Isian, Layar, Memuat, Tombol, TombolLink } from "../ui";
+import { BilahAtas, Dialog, GalatMuat, Isian, Layar, Memuat, PenandaAntrean, Tombol, TombolLink } from "../ui";
 
-const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+const awalHari = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const dariInput = (v) => { const d = new Date(`${v}T00:00`); return Number.isNaN(d.getTime()) ? null : d; };
 
-/** Ringkasan 7 hari terakhir (termasuk hari ini), sama dengan PencatatanHistoryFragment.bindWeeklySummary. */
-function ringkasanMingguan(items) {
-  const totals = new Map();
-  for (const item of items) {
-    const d = parseServerDate(item.tanggalWaktu);
-    if (!d) continue;
-    totals.set(dayKey(d), (totals.get(dayKey(d)) || 0) + (Number(item.totalSampah) || 0));
-  }
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d;
-  });
-  const bars = days.map((d) => ({ label: hariSingkat(d).replace(/\.$/, ""), value: totals.get(dayKey(d)) || 0, date: d }));
-  const total = bars.reduce((s, b) => s + b.value, 0);
-  let busiest = 0;
-  bars.forEach((b, i) => { if (b.value > bars[busiest].value) busiest = i; });
-  const insight = bars[busiest].value <= 0
-    ? "Belum ada sampah tercatat dalam 7 hari terakhir."
-    : `${capital(hariPenuh(days[busiest]))} paling banyak, ${formatKg(bars[busiest].value)} kg.`;
-  return { bars, total, busiest, insight, rentang: rentangTanggal(days[0], days[6]) };
-}
-
-function GrafikMingguan({ bars, busiest }) {
+/** Grafik batang rekapan (WeeklyBarChartView): 7–31 batang; hari ini kuning terpal. */
+function GrafikRekapan({ bars, highlight }) {
   const max = Math.max(...bars.map((b) => b.value), 0) || 1;
-  const today = bars.length - 1;
+  let busiest = -1;
+  bars.forEach((b, i) => { if (b.value > 0 && (busiest < 0 || b.value > bars[busiest].value)) busiest = i; });
+  const n = bars.length;
+  const gap = n > 20 ? 3 : n > 12 ? 5 : 10;
+  // Rentang panjang: label ditampilkan berselang-seling supaya tidak bertumpuk.
+  const langkahLabel = n <= 8 ? 1 : Math.ceil(n / 6);
   return (
-    <div className="ghm-grafik" role="img" aria-label={`Grafik sampah masuk 7 hari terakhir: ${bars.map((b) => `${b.label} ${formatKg(b.value)} kilogram`).join(", ")}`}>
+    <div
+      className={`ghm-grafik ${n > 12 ? "rapat" : ""}`}
+      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, gap: `${gap}px` }}
+      role="img"
+      aria-label={`Grafik sampah organik masuk: ${bars.map((b) => `${b.label} ${formatKg(b.value)} kilogram`).join(", ")}`}
+    >
       {bars.map((b, i) => {
         const tinggi = b.value > 0 ? Math.max(6, (b.value / max) * 100) : 4;
-        const kuat = i === today;
+        const kuat = i === highlight;
+        const tampilLabel = n <= 8 || kuat || i === 0 || i === n - 1 || i % langkahLabel === 0;
         return (
           <div key={i} className={`kolom ${kuat ? "hari-ini" : ""} ${b.value <= 0 ? "kosong" : ""}`}>
             <span className="nilai">{b.value > 0 && (kuat || i === busiest) ? formatKg(b.value) : ""}</span>
             <span className="area"><span className="batang" style={{ height: `${tinggi}%` }} /></span>
-            <span className="hari">{b.label}</span>
+            <span className="hari">{tampilLabel ? b.label : ""}</span>
           </div>
         );
       })}
@@ -63,6 +53,9 @@ export function SampahScreen() {
   const { keluar } = useSession();
   const riwayat = useMuat(() => api("/pencacahan"), [], boleh);
   const notif = useMuat(() => api("/notifikasi"), [], boleh);
+  // Antrean berkurang = ada data yang baru terkirim: muat ulang riwayat.
+  const menunggu = useAntrean(() => riwayat.muat());
+  const [rentang, setRentang] = useState({ jenis: "TUJUH_HARI", dari: null, sampai: null });
   const [konfirmasiKeluar, setKonfirmasiKeluar] = useState(false);
   const [sibukKeluar, setSibukKeluar] = useState(false);
 
@@ -70,16 +63,23 @@ export function SampahScreen() {
     const list = riwayat.data?.data || [];
     return [...list].sort((a, b) => (parseServerDate(b.tanggalWaktu)?.getTime() || 0) - (parseServerDate(a.tanggalWaktu)?.getTime() || 0));
   }, [riwayat.data]);
-  const minggu = useMemo(() => ringkasanMingguan(items), [items]);
+  const rekap = useMemo(() => rekapan(items, rentang), [items, rentang]);
+
+  const pilihRentang = (jenis) => {
+    if (jenis !== "KUSTOM") { setRentang({ jenis, dari: null, sampai: null }); return; }
+    if (rentang.jenis === "KUSTOM") return;
+    // Kustom dimulai dari rentang yang sedang tampil, lalu bisa diubah tanggalnya.
+    setRentang({ jenis, dari: awalHari(rekap.awal), sampai: awalHari(rekap.akhir) });
+  };
   const adaNotifBaru = (notif.data?.data || []).some((n) => !n.isRead);
 
   if (!boleh) return null;
   return (
-    <Layar nav footer={<TombolLink href="/app/sampah/catat">Catat sampah hari ini</TombolLink>}>
+    <Layar nav footer={<TombolLink href="/app/sampah/catat">Catat sampah organik</TombolLink>}>
       <header className="ghm-kepala">
         <div>
           <p className="ghm-kecil">Halo, pengelola</p>
-          <h1 className="ghm-judul-layar">Sampah minggu ini</h1>
+          <h1 className="ghm-judul-layar">Rekapan sampah organik</h1>
         </div>
         <div className="ghm-kepala-aksi">
           <Link href="/app/notifikasi" className="ghm-bulat putih" aria-label={adaNotifBaru ? "Notifikasi, ada yang belum dibaca" : "Notifikasi"}>
@@ -89,14 +89,34 @@ export function SampahScreen() {
         </div>
       </header>
 
+      <PenandaAntrean jumlah={menunggu} />
+
+      <div className="ghm-chip-grup" role="radiogroup" aria-label="Rentang rekapan">
+        {PILIHAN_RENTANG.map((p) => (
+          <button key={p.jenis} type="button" role="radio" aria-checked={rentang.jenis === p.jenis} className={`ghm-chip ${rentang.jenis === p.jenis ? "dipilih" : ""}`} onClick={() => pilihRentang(p.jenis)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {rentang.jenis === "KUSTOM" && (
+        <div className="ghm-dua-kolom">
+          <Isian label="Dari tanggal">
+            {(attrs) => <input {...attrs} className="ghm-input" type="date" value={rentang.dari ? nilaiInputTanggal(rentang.dari) : ""} max={nilaiInputTanggal()} onChange={(e) => setRentang({ ...rentang, dari: dariInput(e.target.value) })} />}
+          </Isian>
+          <Isian label="Sampai tanggal">
+            {(attrs) => <input {...attrs} className="ghm-input" type="date" value={rentang.sampai ? nilaiInputTanggal(rentang.sampai) : ""} max={nilaiInputTanggal()} onChange={(e) => setRentang({ ...rentang, sampai: dariInput(e.target.value) })} />}
+          </Isian>
+        </div>
+      )}
+
       <section className="ghm-kartu ghm-ringkasan">
         <div className="ghm-angka-baris">
-          <span className="ghm-angka-besar">{formatKg(minggu.total)}</span>
+          <span className="ghm-angka-besar">{formatKg(rekap.total)}</span>
           <span className="ghm-judul-bagian">kg</span>
         </div>
-        <p className="ghm-kecil">masuk dalam 7 hari terakhir, {minggu.rentang}</p>
-        <GrafikMingguan bars={minggu.bars} busiest={minggu.busiest} />
-        <p className="ghm-kecil">{minggu.insight}</p>
+        <p className="ghm-kecil">{rekap.keterangan}</p>
+        <GrafikRekapan bars={rekap.bars} highlight={rekap.highlight} />
+        <p className="ghm-kecil">{rekap.insight}</p>
       </section>
 
       <h2 className="ghm-judul-bagian ghm-subjudul">Riwayat</h2>
@@ -105,7 +125,7 @@ export function SampahScreen() {
       ) : riwayat.loading && !riwayat.data ? (
         <Memuat />
       ) : items.length === 0 ? (
-        <p className="ghm-kartu ghm-kecil">Belum ada catatan. Ketuk Catat sampah hari ini untuk mulai.</p>
+        <p className="ghm-kartu ghm-kecil">Belum ada catatan. Ketuk Catat sampah organik untuk mulai.</p>
       ) : (
         <ul className="ghm-kartu ghm-daftar">
           {items.map((item) => {
@@ -141,6 +161,20 @@ export function SampahScreen() {
   );
 }
 
+/** URL objek untuk pratinjau foto; dilepas otomatis saat foto berganti / layar ditutup. */
+function useUrlFoto(blob) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!blob) { setUrl(null); return undefined; }
+    const u = URL.createObjectURL(blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
+  return url;
+}
+
+const INFO_FOTO = "Foto disimpan di HP, belum dikirim ke server.";
+
 export function CatatSampahScreen() {
   const boleh = useRequireAuth();
   const { toast } = useSession();
@@ -149,6 +183,9 @@ export function CatatSampahScreen() {
   const [pukul, setPukul] = useState(() => nilaiInputJam());
   const [berat, setBerat] = useState("");
   const [catatan, setCatatan] = useState("");
+  const [foto, setFoto] = useState(null);
+  const urlFoto = useUrlFoto(foto);
+  const inputFoto = useRef(null);
   const [galat, setGalat] = useState(null);
   const [sibuk, setSibuk] = useState(false);
 
@@ -162,18 +199,34 @@ export function CatatSampahScreen() {
     setBerat(e.target.value.replace(/^0+(?=\d)/, ""));
     setGalat(null);
   };
+  const onFoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // supaya foto yang sama bisa dipilih lagi
+    if (file) setFoto(await kecilkanFoto(file));
+  };
 
   const simpan = async () => {
     const kg = bacaAngka(berat);
-    if (kg === null || kg <= 0) { setGalat("Isi berat sampah, lebih dari 0 kg"); return; }
+    if (kg === null || kg <= 0) { setGalat("Isi berat sampah organik, lebih dari 0 kg"); return; }
     const waktu = new Date(`${tanggal}T${pukul || "00:00"}`);
     if (Number.isNaN(waktu.getTime())) { setGalat("Tanggal atau pukul tidak valid"); return; }
     setSibuk(true);
+    const body = { tanggalWaktu: waktu.toISOString(), totalSampah: kg, catatan: catatan.trim() || null };
+    // Foto disimpan lokal dengan kunci tanggalWaktu (API belum menerima gambar).
+    if (foto) await simpanFoto(body.tanggalWaktu, foto);
     try {
-      await api("/pencacahan", { method: "POST", body: { tanggalWaktu: waktu.toISOString(), totalSampah: kg, catatan: catatan.trim() || null } });
+      await api("/pencacahan", { method: "POST", body });
       toast("Catatan sampah tersimpan");
       router.replace("/app");
     } catch (err) {
+      if (perluDiantrekan(err)) {
+        // Tidak ada internet: catatan disimpan di HP dan dikirim otomatis.
+        antrekan(JENIS.SAMPAH, body);
+        toast(PESAN_TERSIMPAN_DI_HP, 4500);
+        router.replace("/app");
+        return;
+      }
+      if (foto) await hapusFoto(body.tanggalWaktu);
       toast(`Gagal menyimpan: ${pesanDari(err)}`, 4500);
       setSibuk(false);
     }
@@ -183,8 +236,8 @@ export function CatatSampahScreen() {
   return (
     <Layar footer={<Tombol onClick={simpan} disabled={sibuk}>{sibuk ? "Memproses…" : "Simpan catatan"}</Tombol>}>
       <BilahAtas kembali="/app" disabled={sibuk} />
-      <h1 className="ghm-judul-layar">Catat sampah</h1>
-      <p className="ghm-kecil ghm-subjudul-layar">Isi setelah sampah selesai ditimbang.</p>
+      <h1 className="ghm-judul-layar">Catat sampah organik</h1>
+      <p className="ghm-kecil ghm-subjudul-layar">Isi setelah sampah organik selesai ditimbang.</p>
 
       <div className="ghm-dua-kolom">
         <Isian label="Tanggal">
@@ -195,7 +248,7 @@ export function CatatSampahScreen() {
         </Isian>
       </div>
 
-      <Isian label="Berat sampah" galat={galat}>
+      <Isian label="Berat sampah organik" galat={galat}>
         {(attrs) => (
           <div className="ghm-stepper">
             <button type="button" className="ghm-stepper-tombol" onClick={() => ubahBerat(-1)} aria-label="Kurangi 1 kg"><IconKurang size={26} /></button>
@@ -211,6 +264,18 @@ export function CatatSampahScreen() {
       <Isian label="Catatan (boleh dikosongkan)">
         {(attrs) => <textarea {...attrs} className="ghm-input" rows={3} maxLength={1000} value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Misal: banyak sisa sayur dari pasar" />}
       </Isian>
+
+      {/* Foto (opsional; tersimpan di HP, belum dikirim ke server) */}
+      <div className="ghm-isian">
+        <span className="ghm-label-isian">Foto (boleh dikosongkan)</span>
+        {urlFoto && <img className="ghm-foto pratinjau" src={urlFoto} alt="Foto catatan sampah" />}
+        <div className="ghm-foto-aksi">
+          <button type="button" className="ghm-saran-tombol" onClick={() => inputFoto.current?.click()} disabled={sibuk}>{foto ? "Ganti foto" : "Pilih foto"}</button>
+          {foto && <button type="button" className="ghm-saran-tombol" onClick={() => setFoto(null)} disabled={sibuk}>Hapus foto</button>}
+        </div>
+        <input ref={inputFoto} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onFoto} />
+        {foto && <p className="ghm-bantuan">{INFO_FOTO}</p>}
+      </div>
     </Layar>
   );
 }
@@ -221,6 +286,14 @@ export function DetailSampahScreen() {
   const detail = useMuat(() => api(`/pencacahan/${id}`), [id], boleh);
   const item = detail.data?.data;
   const waktu = parseServerDate(item?.tanggalWaktu);
+  // Foto lokal (kalau ada) dengan kunci tanggalWaktu catatan.
+  const [foto, setFoto] = useState(null);
+  const urlFoto = useUrlFoto(foto);
+  useEffect(() => {
+    let batal = false;
+    if (item?.tanggalWaktu) ambilFoto(item.tanggalWaktu).then((b) => { if (!batal) setFoto(b); });
+    return () => { batal = true; };
+  }, [item?.tanggalWaktu]);
 
   if (!boleh) return null;
   return (
@@ -238,6 +311,13 @@ export function DetailSampahScreen() {
             <h2 className="ghm-label">Catatan</h2>
             <p>{item.catatan?.trim() || "Tidak ada catatan."}</p>
           </section>
+          {urlFoto && (
+            <section className="ghm-jarak-atas">
+              <h2 className="ghm-label ghm-label-isian">Foto</h2>
+              <img className="ghm-foto" src={urlFoto} alt="Foto catatan sampah" />
+              <p className="ghm-kecil ghm-jarak-atas">{INFO_FOTO}</p>
+            </section>
+          )}
           {item.createdAt && <p className="ghm-kecil ghm-jarak-atas">Dicatat {tanggalSedang(parseServerDate(item.createdAt))}</p>}
         </>
       )}

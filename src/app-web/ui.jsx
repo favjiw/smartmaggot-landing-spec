@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef } from "react";
 import { IconCentang, IconChat, IconKembali, IconMaggot, IconSampah } from "./icons";
-import { TAHAP } from "./siklus";
+import { FASE_SOP, TEKS_SIKLUS_SELESAI, urutanFase } from "./siklus";
 
 /** Kerangka satu layar. `nav` menampilkan navigasi bawah, `footer` area tombol yang menempel di bawah. */
 export function Layar({ children, nav = false, footer = null, className = "" }) {
@@ -92,19 +92,28 @@ export function Pilihan({ dipilih, children, ...rest }) {
   );
 }
 
-/** Pita siklus: ruas sebelum tahap sekarang hijau, tahap sekarang kuning, sesudahnya abu. */
-export function Pita({ tahap }) {
-  const aktif = TAHAP.indexOf(tahap);
+/**
+ * Pita siklus 5 fase SOP: ruas sebelum fase sekarang hijau, fase sekarang kuning, sesudahnya abu.
+ * `fase` null berarti siklus sudah lewat hari ke-41: semua ruas hijau (selesai).
+ */
+export function Pita({ fase }) {
+  const aktif = urutanFase(fase);
   return (
-    <div className="ghm-pita" role="img" aria-label={`Tahap sekarang: ${tahap}`}>
-      {TAHAP.map((nama, i) => (
-        <div key={nama} className={`ruas ${i < aktif ? "lewat" : i === aktif ? "sekarang" : ""}`}>
+    <div className="ghm-pita" role="img" aria-label={fase ? `Fase sekarang: ${fase.nama}` : TEKS_SIKLUS_SELESAI}>
+      {FASE_SOP.map((f, i) => (
+        <div key={f.kunci} className={`ruas ${i < aktif ? "lewat" : i === aktif ? "sekarang" : ""}`}>
           <span className="batang" />
-          <span className="label">{nama}</span>
+          <span className="label">{f.label}</span>
         </div>
       ))}
     </div>
   );
+}
+
+/** Penanda antrean offline: muncul bila ada input yang belum terkirim. */
+export function PenandaAntrean({ jumlah }) {
+  if (!jumlah) return null;
+  return <p className="ghm-kartu ghm-penanda-antrean" role="status">{jumlah} catatan menunggu dikirim</p>;
 }
 
 export function Memuat({ teks = "Memuat…" }) {

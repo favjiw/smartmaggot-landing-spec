@@ -1,25 +1,99 @@
-// Logika siklus maggot, sama dengan aplikasi Android
-// (ui/widget/PitaSiklus.kt, ui/prediksi/detail_siklus/DetailSiklusActivity.kt).
-import { formatGram, formatKg, parseServerDate, tanggalPendek } from "./format";
+// Logika siklus maggot, sama dengan aplikasi Android v1.3.0
+// (ui/widget/SiklusSop.kt, ui/widget/PitaSiklus.kt, ui/prediksi/detail_siklus/DetailSiklusActivity.kt).
+import { formatKg, geserHari, hariSejak, parseServerDate, tanggalPendek } from "./format";
 
-export const TAHAP = ["Telur", "Tetas", "Besar", "Panen"];
+/**
+ * Fase budidaya maggot sesuai SOP (gambar SOP hal. 5-6).
+ * Fase berpindah otomatis dari tanggal mulai siklus; operator tidak mencatat perpindahan fase.
+ */
+export const FASE_SOP = [
+  {
+    kunci: "TELUR_LARVA",
+    label: "Telur",
+    nama: "Telur–Larva Awal",
+    hariAwal: 0,
+    hariAkhir: 12,
+    panduan: [
+      "Perawatan telur, pengecekan perkembangan larva, dan pemberian pakan awal.",
+      "Baki disimpan di rak telur penetasan.",
+      "Total pakan sampai hari ke-12 sekitar 6 kg.",
+    ],
+  },
+  {
+    kunci: "PEMBESARAN",
+    label: "Besar",
+    nama: "Pembesaran Larva",
+    hariAwal: 13,
+    hariAkhir: 20,
+    panduan: [
+      "Larva usia 13 hari dibagi menjadi beberapa baki dan diberi pakan rutin.",
+      "Pakan 1–1,5 kg per baki per hari.",
+      "Baki dipindahkan ke rak pembesaran dan reduksi.",
+      "Target reduksi 200 kg: 30–40 baki aktif setiap hari.",
+      "Target 80–100 gram telur dalam 1 minggu.",
+      "Catat pemberian pakan dan kondisi media.",
+    ],
+  },
+  {
+    kunci: "PREPUPA",
+    label: "Prepupa",
+    nama: "Prepupa",
+    hariAwal: 21,
+    hariAkhir: 27,
+    panduan: [
+      "Tidak diberi pakan.",
+      "Pastikan lingkungan kering dan aman.",
+      "Pastikan tidak ada kasgot.",
+      "Baki dipindahkan ke rak prepupa dan pupa.",
+    ],
+  },
+  {
+    kunci: "PUPA",
+    label: "Pupa",
+    nama: "Pupa",
+    hariAwal: 28,
+    hariAkhir: 34,
+    panduan: [
+      "Tidak diberi pakan.",
+      "Pastikan tidak ada kasgot.",
+      "Pupa yang sudah sempurna dipindahkan ke insektarium.",
+    ],
+  },
+  {
+    kunci: "LALAT_BSF",
+    label: "Lalat",
+    nama: "Lalat BSF",
+    hariAwal: 35,
+    hariAkhir: 41,
+    panduan: [
+      "Tidak diberi pakan, hanya diberi minum dengan penyemprotan.",
+      "Fokus menjaga kandang, kelembapan, dan tempat peletakan telur.",
+      "Perawatan insektarium dan persiapan produksi telur.",
+    ],
+  },
+];
+
+export const FASE_PEMBESARAN = FASE_SOP[1];
+export const TEKS_SIKLUS_SELESAI = "Siklus sudah lewat hari ke-41. Siap panen dan mulai siklus baru.";
+
+/** Fase untuk umur `hari` (0 = hari mulai). null bila sudah lewat hari ke-41. */
+export const faseDariHari = (hari) => FASE_SOP.find((f) => hari >= f.hariAwal && hari <= f.hariAkhir) || null;
+
+/** Fase SOP sekarang dari tanggal mulai; null bila tanggal tidak terbaca atau siklus sudah selesai. */
+export const faseSopDari = (mulai, hariIni = new Date()) => (mulai ? faseDariHari(hariSejak(mulai, hariIni)) : null);
+
+/** Urutan fase (0–4); fase null (siklus selesai) dianggap sesudah fase terakhir. */
+export const urutanFase = (fase) => (fase ? FASE_SOP.indexOf(fase) : FASE_SOP.length);
+
+/** Tanggal mulai fase (hari ke-`hariAwal`) dihitung dari tanggal mulai siklus. */
+export const tanggalFase = (mulai, fase) => geserHari(mulai, fase.hariAwal);
 
 const jenisDari = (fase) => (fase?.jenis || "").toUpperCase();
 export const cariFase = (faseList, jenis) => (faseList || []).find((f) => jenisDari(f) === jenis) || null;
 
-/**
- * Tahap dari jenis fase. Fase PANEN dibuat otomatis bersama fase besar untuk meminta perkiraan,
- * jadi tidak menandakan larva siap panen: tahap "Panen" di pita tidak pernah aktif.
- */
-export function tahapDariFase(faseList) {
-  const jenis = (faseList || []).map(jenisDari);
-  if (jenis.includes("PEMBESARAN")) return "Besar";
-  if (jenis.includes("PENETASAN")) return "Tetas";
-  return "Telur";
-}
-
 const angka = (v) => {
-  const n = typeof v === "number" ? v : Number(String(v ?? "").trim());
+  if (v === null || v === undefined || (typeof v === "string" && !v.trim())) return null;
+  const n = typeof v === "number" ? v : Number(String(v).trim());
   return Number.isFinite(n) ? n : null;
 };
 
@@ -48,26 +122,25 @@ export function pakanGramSiklus(faseList) {
   return gram && gram > 0 ? gram : null;
 }
 
-/** Linimasa: Telur (data siklus), Tetas (PENETASAN), Besar (PEMBESARAN). PANEN tidak ditampilkan. */
-export function susunLinimasa(siklus) {
-  const fase = siklus?.fase || [];
-  const baris = [];
+/**
+ * Jadwal 5 fase SOP dihitung dari tanggal mulai (hari ke-0, 13, 21, 28, 35).
+ * Tanggal fase Pembesaran memakai tanggal yang benar-benar dicatat bila ada.
+ */
+export function susunJadwal(siklus, faseSekarang) {
   const mulai = parseServerDate(siklus?.tanggalMulai);
-  const isiTelur = [
-    siklus?.jumlahTelur && siklus?.mediaTelur ? `${formatGram(siklus.jumlahTelur)} gram telur di media ${siklus.mediaTelur.toLowerCase()}.` : null,
-    siklus?.catatan?.trim() || null,
-  ].filter(Boolean).join(" ");
-  if (mulai || siklus?.jumlahTelur) baris.push({ judul: "Telur", tanggal: tanggalPendek(mulai), keterangan: isiTelur });
+  if (!mulai) return [];
+  const faseList = siklus?.fase || [];
+  const besar = cariFase(faseList, "PEMBESARAN");
+  const pakanGram = pakanGramSiklus(faseList);
+  const sekarang = urutanFase(faseSekarang);
 
-  const tetas = cariFase(fase, "PENETASAN");
-  if (tetas) baris.push({ judul: "Tetas", tanggal: tanggalPendek(parseServerDate(tetas.tanggal)), keterangan: tetas.keterangan || "" });
-
-  const besar = cariFase(fase, "PEMBESARAN");
-  if (besar) {
-    const pakanPanen = angka(cariFase(fase, "PANEN")?.jumlahMakanan);
-    const pakan = angka(besar.jumlahMakanan) ?? pakanPanen;
-    const isi = [pakan && pakan > 0 ? `Pakan ${formatKg(pakan / 1000)} kg.` : null, besar.keterangan?.trim() || null].filter(Boolean).join(" ");
-    baris.push({ judul: "Besar", tanggal: tanggalPendek(parseServerDate(besar.tanggal)), keterangan: isi });
-  }
-  return baris;
+  return FASE_SOP.map((fase, i) => {
+    const status = i < sekarang ? "selesai" : i === sekarang ? "sekarang" : "belum";
+    const statusTeks = { selesai: "Selesai", sekarang: "Sedang berjalan", belum: "Belum sampai" }[status];
+    const tanggalCatat = fase === FASE_PEMBESARAN ? parseServerDate(besar?.tanggal) : null;
+    const keterangan = fase === FASE_PEMBESARAN && pakanGram
+      ? `${statusTeks} · Pakan ${formatKg(pakanGram / 1000)} kg tercatat.`
+      : statusTeks;
+    return { kunci: fase.kunci, judul: fase.nama, tanggal: tanggalPendek(tanggalCatat || tanggalFase(mulai, fase)), keterangan, status };
+  });
 }

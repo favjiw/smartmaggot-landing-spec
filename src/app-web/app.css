@@ -139,6 +139,19 @@
 .ghm-grafik .nilai { align-self: end; padding-bottom: 6px; white-space: nowrap; }
 .ghm-grafik .hari { align-self: center; }
 
+.ghm-grafik .kolom { min-width: 0; }
+.ghm-grafik.rapat .kolom { font-size: 12px; }
+.ghm-grafik.rapat .batang { border-radius: 4px 4px 2px 2px; }
+
+/* Pilihan rentang rekapan (chip) */
+.ghm-chip-grup { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-top: 2px; }
+.ghm-chip-grup::-webkit-scrollbar { display: none; }
+.ghm-chip { flex: none; min-height: 44px; padding: 0 16px; border-radius: 99px; border: 1.5px solid var(--garis); background: var(--putih); color: var(--tinta); font-weight: 700; font-size: 16px; cursor: pointer; }
+.ghm-chip.dipilih { background: var(--daun-700); border-color: var(--daun-700); color: var(--putih); }
+
+/* Penanda antrean offline */
+.ghm-penanda-antrean { padding: 12px 14px; font-size: 15px; color: var(--daun-900); }
+
 /* Daftar riwayat & notifikasi */
 .ghm-daftar { list-style: none; margin: 0; padding: 4px 18px; gap: 0; }
 .ghm-daftar li + li { border-top: 1px solid var(--garis); }
@@ -161,8 +174,9 @@
 .ghm-kartu-siklus-bawah > div { display: flex; flex-direction: column; }
 .ghm-hari-ke { font-family: var(--ghm-bricolage), sans-serif; font-weight: 700; color: var(--daun-900); }
 
-.ghm-pita { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.ghm-pita .ruas { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--tinta-redup); }
+.ghm-pita { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.ghm-pita .ruas { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--tinta-redup); min-width: 0; }
+.ghm-pita .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ghm-pita .batang { height: 8px; border-radius: 99px; background: var(--garis); }
 .ghm-pita .lewat { color: var(--tinta); }
 .ghm-pita .lewat .batang { background: var(--daun-700); }
@@ -179,6 +193,24 @@
 .ghm-linimasa .titik { width: 14px; height: 14px; margin-top: 5px; flex: none; border-radius: 50%; background: var(--daun-700); }
 .ghm-linimasa li > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .ghm-linimasa-atas { display: flex; justify-content: space-between; gap: 10px; }
+
+.ghm-linimasa li.belum .titik { background: var(--garis); }
+.ghm-linimasa li.sekarang .titik { background: var(--terpal-400); }
+.ghm-linimasa li.sekarang strong { color: var(--daun-900); }
+
+/* Kartu fase sekarang (panduan SOP) */
+.ghm-redup { color: var(--tinta-redup); }
+.ghm-tebal { font-weight: 700; }
+.ghm-panduan { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Pengingat */
+.ghm-daftar-pengingat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ghm-daftar-pengingat li + li { border-top: 1px solid rgb(28 42 32 / 0.12); }
+.ghm-daftar-pengingat a { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; }
+.ghm-daftar-pengingat .ghm-kecil { color: var(--tinta); }
+.ghm-info-aksi { align-items: flex-start; }
+.ghm-info-aksi > div { display: flex; flex-direction: column; gap: 6px; }
+.ghm-tautan-tombol { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--daun-900); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 32px; }
 
 .ghm-hasil { text-align: center; padding: 18px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ghm-rincian-daftar { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0; }
@@ -209,6 +241,12 @@ textarea.ghm-input { resize: vertical; min-height: 80px; }
 .ghm-input-wrap .ghm-input.ada-ikon { padding-left: 48px; padding-right: 12px; }
 .ghm-input-ikon { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: var(--tinta-redup); }
 .ghm-input-ikon.kiri { left: 4px; right: auto; pointer-events: none; }
+.ghm-input-tetap { background: var(--tunas-50); font-weight: 700; cursor: default; }
+.ghm-input-tetap:hover, .ghm-input-tetap:focus { border-color: var(--garis); }
+.ghm-label-isian { display: block; font-weight: 500; font-size: 15px; margin-bottom: 8px; }
+.ghm-foto { display: block; width: 100%; height: 220px; object-fit: cover; border-radius: 20px; background: var(--putih); }
+.ghm-foto.pratinjau { height: 180px; margin-bottom: 12px; }
+.ghm-foto-aksi { display: flex; gap: 8px; flex-wrap: wrap; }
 .ghm-galat-teks { color: var(--galat); font-size: 15px; margin-top: 6px; }
 .ghm-bantuan { color: var(--tinta-redup); font-size: 15px; margin-top: 6px; }
 .ghm-dua-kolom { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

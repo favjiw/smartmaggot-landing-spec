@@ -2,7 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { bersihkanAntrean, usePengirimAntrean } from "./antrean";
 import { api, bacaSesi, hapusSesi, setOnSesiHabis, simpanSesi } from "./api";
+import { usePengingatLatar } from "./pengingat";
 
 const SessionContext = createContext(null);
 
@@ -37,9 +39,15 @@ export function AppSessionProvider({ children }) {
   const keluar = useCallback(async () => {
     try { await api("/auth/logout", { method: "POST", timeout: 8000 }); } catch { /* tetap keluar */ }
     hapusSesi();
+    // Antrean offline ikut dikosongkan supaya tidak terkirim atas nama akun lain (seperti Android).
+    bersihkanAntrean();
     setSesi(null);
     router.replace("/app/masuk");
   }, [router]);
+
+  // Antrean offline dikirim otomatis & pengingat siklus dicek selama sudah masuk.
+  usePengirimAntrean(ready && !!sesi);
+  usePengingatLatar(ready && !!sesi);
 
   const value = useMemo(() => ({ ready, sesi, masuk, keluar, toast: tampilkanToast }), [ready, sesi, masuk, keluar, tampilkanToast]);
 

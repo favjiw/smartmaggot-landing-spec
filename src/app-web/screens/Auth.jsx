@@ -75,7 +75,7 @@ export function MasukScreen() {
   if (!boleh) return null;
   return (
     <Layar className="ghm-auth">
-      <Hero subjudul="Catat sampah yang masuk dan pantau kandang maggot di RW-mu." />
+      <Hero subjudul="Catat sampah organik yang masuk dan pantau kandang maggot di RW-mu." />
       <form className="ghm-auth-form" onSubmit={kirim} noValidate>
         <h2 className="ghm-judul-bagian">Masuk ke akunmu</h2>
         {pesan && <p className={`ghm-pemberitahuan ${pesan.startsWith("Akun dibuat") ? "sukses" : ""}`} role="alert">{pesan}</p>}
@@ -122,7 +122,7 @@ export function DaftarScreen() {
   if (!boleh) return null;
   return (
     <Layar className="ghm-auth">
-      <Hero subjudul="Satu akun untuk tiap pengelola. Data sampah yang kamu catat akan masuk ke RW yang dipilih." />
+      <Hero subjudul="Satu akun untuk tiap pengelola. Data sampah organik yang kamu catat akan masuk ke RW yang dipilih." />
       <form className="ghm-auth-form" onSubmit={kirim} noValidate>
         <h2 className="ghm-judul-bagian">Buat akun baru</h2>
         {pesan && <p className="ghm-pemberitahuan" role="alert">{pesan}</p>}

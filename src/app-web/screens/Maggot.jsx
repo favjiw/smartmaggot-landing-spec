@@ -3,29 +3,39 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { antrekan, JENIS, PESAN_TERSIMPAN_DI_HP, perluDiantrekan, useAntrean } from "../antrean";
 import { api, pesanDari } from "../api";
-import { bacaAngka, formatGram, formatKg, hariKeTeks, nilaiInputTanggal, parseServerDate, rapikanDesimal, tanggalPendek } from "../format";
+import { bacaAngka, formatGram, formatKg, hariKeTeks, nilaiInputTanggal, parseServerDate, rapikanDesimal, tanggalPanjang, tanggalPendek } from "../format";
 import { useMuat } from "../hooks";
-import { IconChevron, IconInfo, IconKalender } from "../icons";
+import { IconBell, IconChevron, IconInfo, IconKalender } from "../icons";
+import { pengingatHariIni, useIzinPengingat } from "../pengingat";
 import { useRequireAuth, useSession } from "../session";
-import { pakanGramSiklus, perkiraanSiklus, susunLinimasa, tahapDariFase } from "../siklus";
-import { BilahAtas, GalatMuat, Isian, Layar, Memuat, Pilihan, Pita, Tombol, TombolLink } from "../ui";
+import {
+  cariFase, FASE_SOP, faseSopDari, pakanGramSiklus, perkiraanSiklus, susunJadwal, TEKS_SIKLUS_SELESAI, urutanFase,
+} from "../siklus";
+import { BilahAtas, GalatMuat, Isian, Layar, Memuat, PenandaAntrean, Pilihan, Pita, Tombol, TombolLink } from "../ui";
 
 // ===================================================== Kandang (tab Maggot)
 
 export function MaggotScreen() {
   const boleh = useRequireAuth();
   const total = useMuat(() => api("/prediksi/total"), [], boleh);
-  // Daftar siklus + detail tiap siklus (fase & perkiraan) dalam satu langkah.
+  // Daftar siklus + detail tiap siklus (perkiraan) dalam satu langkah.
   const daftar = useMuat(async () => {
     const res = await api("/siklus");
     const list = [...(res?.data || [])].sort((a, b) => (parseServerDate(b.tanggalMulai)?.getTime() || 0) - (parseServerDate(a.tanggalMulai)?.getTime() || 0));
     const detail = await Promise.all(list.map((s) => api(`/siklus/${s.id}`).then((r) => r.data).catch(() => null)));
     return list.map((s, i) => ({ siklus: s, detail: detail[i] }));
   }, [], boleh);
+  // Antrean berkurang = ada data yang baru terkirim: muat ulang daftar & total.
+  const menunggu = useAntrean(() => { daftar.muat(); total.muat(); });
 
   const totalKg = total.data ? (Number(total.data.totalKg) || (Number(total.data.totalGram) || 0) / 1000) : 0;
   const kartu = daftar.data || [];
+  const semuaSiklus = useMemo(() => kartu.map((k) => k.siklus), [kartu]);
+  const pengingat = useMemo(() => pengingatHariIni(semuaSiklus), [semuaSiklus]);
+  const izin = useIzinPengingat(semuaSiklus);
+  const adaSiklusAktif = semuaSiklus.some((s) => faseSopDari(parseServerDate(s.tanggalMulai)));
 
   if (!boleh) return null;
   return (
@@ -36,6 +46,8 @@ export function MaggotScreen() {
           <h1 className="ghm-judul-layar">Kandang maggot</h1>
         </div>
       </header>
+
+      <PenandaAntrean jumlah={menunggu} />
 
       <section className="ghm-kartu ghm-kartu-gelap">
         <p className="ghm-label">Perkiraan total panen</p>
@@ -48,6 +60,32 @@ export function MaggotScreen() {
           <p className="ghm-kecil">{total.loading && !total.data ? "Memuat…" : "Belum ada perkiraan. Catat fase besar di salah satu siklus untuk melihatnya."}</p>
         )}
       </section>
+
+      {pengingat.length > 0 && (
+        <section className="ghm-kartu ghm-kartu-kuning" aria-label="Pengingat hari ini">
+          <p className="ghm-label">Pengingat hari ini</p>
+          <ul className="ghm-daftar-pengingat">
+            {pengingat.map((p) => (
+              <li key={p.kunci}>
+                <Link href={`/app/maggot/${p.siklusId}`}>
+                  <strong>{p.judul}</strong>
+                  <span className="ghm-kecil">{p.isiLayar}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {izin.status === "default" && adaSiklusAktif && (
+        <section className="ghm-info ghm-info-aksi">
+          <IconBell size={22} />
+          <div>
+            <p>Nyalakan notifikasi supaya HP mengingatkan saat siklus pindah fase dan waktunya memberi pakan.</p>
+            <button type="button" className="ghm-tautan-tombol" onClick={izin.minta}>Nyalakan pengingat</button>
+          </div>
+        </section>
+      )}
 
       {daftar.error && !daftar.data ? (
         <GalatMuat pesan={daftar.error} onCobaLagi={daftar.muat} />
@@ -64,15 +102,16 @@ export function MaggotScreen() {
   );
 }
 
+/** Kartu siklus (SiklusAdapter di Android): fase SOP dari umur siklus + perkiraan panen. */
 function KartuSiklus({ siklus, detail }) {
   const mulai = parseServerDate(siklus.tanggalMulai);
-  const tahap = detail ? tahapDariFase(detail.fase) : null;
+  const fase = faseSopDari(mulai);
   const { hasilKg } = detail ? perkiraanSiklus(detail) : { hasilKg: null };
   const keteranganMulai = mulai ? `Mulai ${tanggalPendek(mulai)}` : "";
   let perkiraan = "Belum ada perkiraan";
   let keterangan = keteranganMulai;
   if (hasilKg) perkiraan = `Perkiraan ${formatKg(hasilKg)} kg`;
-  else if (tahap === "Telur" || tahap === "Tetas") keterangan = "Catat fase besar untuk melihatnya";
+  else if (fase === FASE_SOP[0]) keterangan = "Catat fase besar untuk melihatnya";
 
   return (
     <li>
@@ -81,7 +120,7 @@ function KartuSiklus({ siklus, detail }) {
           <strong className="ghm-judul-bagian">Siklus {siklus.id}</strong>
           {mulai && <span className="ghm-hari-ke">{hariKeTeks(mulai)}</span>}
         </div>
-        {tahap && <Pita tahap={tahap} />}
+        {mulai && <Pita fase={fase} />}
         <div className="ghm-kartu-siklus-bawah">
           <div>
             <strong>{perkiraan}</strong>
@@ -102,7 +141,9 @@ export function MulaiSiklusScreen() {
   const router = useRouter();
   const opsi = useMuat(() => api("/prediksi/opsi"), [], boleh);
   const pilihanMedia = opsi.data?.data?.opsi?.mediaTelur || [];
-  const [tanggal, setTanggal] = useState(() => nilaiInputTanggal());
+  // Tanggal mulai = hari ini (otomatis). Fase berpindah sendiri sesuai umur siklus.
+  const [hariIni] = useState(() => new Date());
+  const tanggal = nilaiInputTanggal(hariIni);
   const [jumlah, setJumlah] = useState("");
   const [media, setMedia] = useState(null);
   const [catatan, setCatatan] = useState("");
@@ -117,8 +158,9 @@ export function MulaiSiklusScreen() {
     setGalat(g);
     if (Object.keys(g).length) return;
     setSibuk(true);
+    const body = { tanggalMulai: tanggal, jumlahTelur: telur, mediaTelur: media, catatan: catatan.trim() || null };
     try {
-      const res = await api("/siklus", { method: "POST", body: { tanggalMulai: tanggal, jumlahTelur: telur, mediaTelur: media, catatan: catatan.trim() || null } });
+      const res = await api("/siklus", { method: "POST", body });
       // Seperti aplikasi Android: siklus baru langsung punya fase PENETASAN (jumlah telur dalam gram).
       const siklusId = res?.data?.id;
       if (siklusId) {
@@ -127,6 +169,13 @@ export function MulaiSiklusScreen() {
       toast("Siklus baru dimulai");
       router.replace(siklusId ? `/app/maggot/${siklusId}` : "/app/maggot");
     } catch (err) {
+      if (perluDiantrekan(err)) {
+        // Tidak ada internet: simpan di HP, kirim otomatis saat online.
+        antrekan(JENIS.SIKLUS, body);
+        toast(PESAN_TERSIMPAN_DI_HP, 4500);
+        router.replace("/app/maggot");
+        return;
+      }
       toast(`Gagal menyimpan: ${pesanDari(err)}`, 4500);
       setSibuk(false);
     }
@@ -138,8 +187,8 @@ export function MulaiSiklusScreen() {
       <BilahAtas kembali="/app/maggot" disabled={sibuk} />
       <h1 className="ghm-judul-layar">Mulai siklus baru</h1>
 
-      <Isian label="Tanggal mulai">
-        {(attrs) => <div className="ghm-input-wrap"><span className="ghm-input-ikon kiri"><IconKalender size={22} /></span><input {...attrs} className="ghm-input ada-ikon" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} /></div>}
+      <Isian label="Tanggal mulai" bantuan="Terisi otomatis (hari ini). Fase berpindah otomatis sesuai umur siklus.">
+        {(attrs) => <div className="ghm-input-wrap"><span className="ghm-input-ikon kiri"><IconKalender size={22} /></span><input {...attrs} className="ghm-input ada-ikon ghm-input-tetap" type="text" value={tanggalPanjang(hariIni)} readOnly tabIndex={-1} /></div>}
       </Isian>
       <Isian label="Jumlah telur (gram)" galat={galat.jumlah} bantuan="Timbang telur sebelum dimasukkan ke media.">
         {(attrs) => <input {...attrs} className="ghm-input" inputMode="decimal" value={jumlah} onChange={(e) => { setJumlah(rapikanDesimal(e.target.value)); setGalat({ ...galat, jumlah: null }); }} placeholder="Contoh: 40 atau 0,5" />}
@@ -182,42 +231,62 @@ export function DetailSiklusScreen() {
   const router = useRouter();
   const { id } = useParams();
   const detail = useMuat(() => api(`/siklus/${id}`), [id], boleh);
+  useAntrean(() => detail.muat());
   const [menghitung, setMenghitung] = useState(false);
   const siklus = detail.data?.data;
+  const mulai = parseServerDate(siklus?.tanggalMulai);
 
   const info = useMemo(() => {
     if (!siklus) return null;
-    const fase = siklus.fase || [];
-    const tahap = tahapDariFase(fase);
+    const faseList = siklus.fase || [];
+    const fase = faseSopDari(parseServerDate(siklus.tanggalMulai));
     const { panen, hasilKg } = perkiraanSiklus(siklus);
-    return { tahap, panen, hasilKg, pakanGram: pakanGramSiklus(fase), linimasa: susunLinimasa(siklus) };
+    return {
+      fase,
+      panen,
+      hasilKg,
+      pembesaran: cariFase(faseList, "PEMBESARAN"),
+      pakanGram: pakanGramSiklus(faseList),
+      jadwal: susunJadwal(siklus, fase),
+    };
   }, [siklus]);
 
   const telurGram = Number(siklus?.jumlahTelur) || 0;
-  const mulai = parseServerDate(siklus?.tanggalMulai);
 
-  // Langkah berikutnya: catat fase besar, atau hitung perkiraan bila fase besar ada tapi perkiraan belum.
+  /**
+   * Kartu kuning + tombol bawah (DetailSiklusActivity.tampilkanLangkahBerikutnya):
+   * - perkiraan sudah ada -> disembunyikan;
+   * - fase besar sudah dicatat tapi perkiraan belum ada -> "Hitung perkiraan panen";
+   * - fase besar belum dicatat dan siklus sudah masuk hari ke-13 -> "Catat fase besar";
+   * - selain itu (belum waktunya) -> disembunyikan.
+   */
   let langkah = null;
-  if (info) {
-    if (info.tahap !== "Besar") {
-      langkah = { teks: "Catat fase besar saat larva mulai diberi pakan. Setelah itu perkiraan hasil panen akan muncul.", tombol: "Catat fase besar", aksi: () => router.push(`/app/maggot/${id}/fase-besar`) };
-    } else if (!info.hasilKg && telurGram > 0) {
+  if (info && !info.panen) {
+    if (info.pembesaran && telurGram > 0) {
       langkah = {
         teks: "Fase besar sudah dicatat, tapi perkiraan panen belum ada. Ketuk tombol di bawah untuk menghitungnya.",
         tombol: "Hitung perkiraan panen",
         aksi: async () => {
           if (!info.pakanGram) { router.push(`/app/maggot/${id}/fase-besar?mode=panen`); return; }
           setMenghitung(true);
+          const tanggal = nilaiInputTanggal();
           try {
-            await kirimFasePanen(id, nilaiInputTanggal(), telurGram, info.pakanGram);
+            await kirimFasePanen(id, tanggal, telurGram, info.pakanGram);
             await detail.muat();
           } catch (err) {
-            toast(pesanDari(err), 5000);
+            if (perluDiantrekan(err)) {
+              antrekan(JENIS.PERKIRAAN, { siklusId: Number(id), tanggal, telurGram, pakanGram: info.pakanGram });
+              toast(PESAN_TERSIMPAN_DI_HP, 5000);
+            } else {
+              toast(pesanDari(err), 5000);
+            }
           } finally {
             setMenghitung(false);
           }
         },
       };
+    } else if (!info.pembesaran && info.fase && urutanFase(info.fase) >= 1) {
+      langkah = { teks: "Catat fase besar saat larva mulai diberi pakan. Setelah itu perkiraan hasil panen akan muncul.", tombol: "Catat fase besar", aksi: () => router.push(`/app/maggot/${id}/fase-besar`) };
     }
   }
 
@@ -232,14 +301,24 @@ export function DetailSiklusScreen() {
       ) : (
         <>
           <h1 className="ghm-angka-sedang">{mulai ? hariKeTeks(mulai) : `Siklus ${id}`}</h1>
-          <Pita tahap={info.tahap} />
+          {mulai && <Pita fase={info.fase} />}
 
-          {info.hasilKg && (
-            <Link href={`/app/maggot/${id}/perkiraan`} className="ghm-kartu ghm-kartu-gelap ghm-kartu-perkiraan" aria-label={`Lihat rincian perkiraan panen, ${formatKg(info.hasilKg)} kg`}>
-              <p className="ghm-label">Perkiraan hasil panen</p>
-              <div className="ghm-angka-baris"><span className="ghm-angka-besar">{formatKg(info.hasilKg)}</span><span className="ghm-judul-bagian">kg</span></div>
-              <span className="ghm-rincian">Rincian <IconChevron size={20} /></span>
-            </Link>
+          {mulai && (
+            <section className="ghm-kartu" aria-label="Fase sekarang">
+              <p className="ghm-label ghm-redup">Fase sekarang</p>
+              {info.fase ? (
+                <>
+                  <h2 className="ghm-judul-bagian">{info.fase.nama}</h2>
+                  <p className="ghm-kecil">Hari {info.fase.hariAwal}–{info.fase.hariAkhir}</p>
+                  <p className="ghm-tebal ghm-jarak-atas">Yang harus dilakukan</p>
+                  <ul className="ghm-panduan">
+                    {info.fase.panduan.map((baris) => <li key={baris}>{baris}</li>)}
+                  </ul>
+                </>
+              ) : (
+                <h2 className="ghm-judul-bagian">{TEKS_SIKLUS_SELESAI}</h2>
+              )}
+            </section>
           )}
 
           {langkah && (
@@ -249,17 +328,25 @@ export function DetailSiklusScreen() {
             </section>
           )}
 
-          <h2 className="ghm-judul-bagian ghm-subjudul">Catatan fase</h2>
-          {info.linimasa.length === 0 ? (
+          {info.hasilKg && (
+            <Link href={`/app/maggot/${id}/perkiraan`} className="ghm-kartu ghm-kartu-gelap ghm-kartu-perkiraan" aria-label={`Lihat rincian perkiraan panen, ${formatKg(info.hasilKg)} kg`}>
+              <p className="ghm-label">Perkiraan hasil panen</p>
+              <div className="ghm-angka-baris"><span className="ghm-angka-besar">{formatKg(info.hasilKg)}</span><span className="ghm-judul-bagian">kg</span></div>
+              <span className="ghm-rincian">Rincian <IconChevron size={20} /></span>
+            </Link>
+          )}
+
+          <h2 className="ghm-judul-bagian ghm-subjudul">Jadwal fase</h2>
+          {info.jadwal.length === 0 ? (
             <p className="ghm-kartu ghm-kecil">Belum ada fase yang dicatat.</p>
           ) : (
             <ol className="ghm-kartu ghm-linimasa">
-              {info.linimasa.map((b) => (
-                <li key={b.judul}>
+              {info.jadwal.map((b) => (
+                <li key={b.kunci} className={b.status}>
                   <span className="titik" aria-hidden="true" />
                   <div>
                     <div className="ghm-linimasa-atas"><strong>{b.judul}</strong><small className="ghm-kecil">{b.tanggal}</small></div>
-                    {b.keterangan && <p className="ghm-kecil">{b.keterangan}</p>}
+                    <p className="ghm-kecil">{b.keterangan}</p>
                   </div>
                 </li>
               ))}
@@ -295,18 +382,31 @@ export function FaseBesarScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siklus]);
 
+  const tersimpanDiHp = () => {
+    toast(PESAN_TERSIMPAN_DI_HP, 5000);
+    router.replace(`/app/maggot/${id}`);
+  };
+
   const simpan = async () => {
     const pakanKg = bacaAngka(pakan);
     if (pakanKg === null || pakanKg <= 0) { setGalat("Isi jumlah pakan dalam kg, lebih dari 0"); return; }
     const telurGram = Number(siklus?.jumlahTelur) || 0;
     if (telurGram <= 0) { toast("Jumlah telur siklus ini tidak ditemukan, jadi perkiraan panen tidak bisa dihitung.", 5000); return; }
     const pakanGram = pakanKg * 1000;
+    const ket = keterangan.trim();
+    const siklusId = Number(id);
 
     if (!hanyaPanen) {
       setStatus("simpan");
       try {
-        await api(`/siklus/${id}/fase`, { method: "POST", body: { jenis: "PEMBESARAN", tanggal, jumlahMakanan: pakanGram, keterangan: keterangan.trim() || null } });
+        await api(`/siklus/${id}/fase`, { method: "POST", body: { jenis: "PEMBESARAN", tanggal, jumlahMakanan: pakanGram, keterangan: ket || null } });
       } catch (err) {
+        if (perluDiantrekan(err)) {
+          // Tidak ada internet: fase besar + perhitungan perkiraan disimpan di HP.
+          antrekan(JENIS.FASE_BESAR, { siklusId, tanggal, pakanKg, telurGram, keterangan: ket });
+          tersimpanDiHp();
+          return;
+        }
         setStatus(null);
         toast(`Gagal menyimpan: ${pesanDari(err)}`, 5000);
         return;
@@ -315,10 +415,16 @@ export function FaseBesarScreen() {
     // Prediksi AI bisa ±15 detik: beri tahu pengguna supaya tidak mengira aplikasi macet.
     setStatus("hitung");
     try {
-      await kirimFasePanen(id, tanggal, telurGram, pakanGram, keterangan.trim());
+      await kirimFasePanen(id, tanggal, telurGram, pakanGram, ket);
       toast("Fase besar tersimpan");
       router.replace(`/app/maggot/${id}/perkiraan`);
     } catch (err) {
+      if (perluDiantrekan(err)) {
+        // Fase besar sudah tersimpan; cukup antrekan perhitungan perkiraannya.
+        antrekan(JENIS.PERKIRAAN, { siklusId, tanggal, telurGram, pakanGram, keterangan: ket });
+        tersimpanDiHp();
+        return;
+      }
       if (hanyaPanen) {
         setStatus(null);
         toast(pesanDari(err), 5000);
@@ -337,6 +443,7 @@ export function FaseBesarScreen() {
       <h1 className="ghm-judul-layar">Catat fase besar</h1>
       {detail.error && !siklus ? <GalatMuat pesan={detail.error} onCobaLagi={detail.muat} /> : (
         <>
+          {mulai && <Pita fase={faseSopDari(mulai)} />}
           <Isian label="Tanggal masuk fase besar">
             {(attrs) => <div className="ghm-input-wrap"><span className="ghm-input-ikon kiri"><IconKalender size={22} /></span><input {...attrs} className="ghm-input ada-ikon" type="date" value={tanggal} min={mulai ? nilaiInputTanggal(mulai) : undefined} onChange={(e) => setTanggal(e.target.value)} disabled={sibuk} /></div>}
           </Isian>
