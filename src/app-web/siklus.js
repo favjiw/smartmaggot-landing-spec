@@ -1,6 +1,6 @@
 // Logika siklus maggot, sama dengan aplikasi Android
 // (ui/widget/PitaSiklus.kt, ui/prediksi/detail_siklus/DetailSiklusActivity.kt).
-import { formatKg, parseServerDate, tanggalPendek } from "./format";
+import { formatGram, formatKg, parseServerDate, tanggalPendek } from "./format";
 
 export const TAHAP = ["Telur", "Tetas", "Besar", "Panen"];
 
@@ -54,7 +54,7 @@ export function susunLinimasa(siklus) {
   const baris = [];
   const mulai = parseServerDate(siklus?.tanggalMulai);
   const isiTelur = [
-    siklus?.jumlahTelur && siklus?.mediaTelur ? `${siklus.jumlahTelur} gram telur di media ${siklus.mediaTelur.toLowerCase()}.` : null,
+    siklus?.jumlahTelur && siklus?.mediaTelur ? `${formatGram(siklus.jumlahTelur)} gram telur di media ${siklus.mediaTelur.toLowerCase()}.` : null,
     siklus?.catatan?.trim() || null,
   ].filter(Boolean).join(" ");
   if (mulai || siklus?.jumlahTelur) baris.push({ judul: "Telur", tanggal: tanggalPendek(mulai), keterangan: isiTelur });

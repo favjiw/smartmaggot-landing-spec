@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { api, pesanDari } from "../api";
-import { bacaAngka, formatKg, hariKeTeks, nilaiInputTanggal, parseServerDate, tanggalPendek } from "../format";
+import { bacaAngka, formatGram, formatKg, hariKeTeks, nilaiInputTanggal, parseServerDate, rapikanDesimal, tanggalPendek } from "../format";
 import { useMuat } from "../hooks";
 import { IconChevron, IconInfo, IconKalender } from "../icons";
 import { useRequireAuth, useSession } from "../session";
@@ -112,7 +112,7 @@ export function MulaiSiklusScreen() {
   const simpan = async () => {
     const telur = bacaAngka(jumlah);
     const g = {};
-    if (telur === null || telur <= 0 || !Number.isInteger(telur)) g.jumlah = "Isi berat telur dalam gram, lebih dari 0";
+    if (telur === null || telur <= 0) g.jumlah = "Isi berat telur dalam gram, lebih dari 0 (boleh pakai koma, misal 0,5)";
     if (!media) g.media = "Pilih media telur";
     setGalat(g);
     if (Object.keys(g).length) return;
@@ -142,7 +142,7 @@ export function MulaiSiklusScreen() {
         {(attrs) => <div className="ghm-input-wrap"><span className="ghm-input-ikon kiri"><IconKalender size={22} /></span><input {...attrs} className="ghm-input ada-ikon" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} /></div>}
       </Isian>
       <Isian label="Jumlah telur (gram)" galat={galat.jumlah} bantuan="Timbang telur sebelum dimasukkan ke media.">
-        {(attrs) => <input {...attrs} className="ghm-input" inputMode="numeric" value={jumlah} onChange={(e) => { setJumlah(e.target.value.replace(/[^\d]/g, "")); setGalat({ ...galat, jumlah: null }); }} placeholder="Contoh: 40" />}
+        {(attrs) => <input {...attrs} className="ghm-input" inputMode="decimal" value={jumlah} onChange={(e) => { setJumlah(rapikanDesimal(e.target.value)); setGalat({ ...galat, jumlah: null }); }} placeholder="Contoh: 40 atau 0,5" />}
       </Isian>
 
       <fieldset className="ghm-fieldset">
@@ -201,7 +201,7 @@ export function DetailSiklusScreen() {
   if (info) {
     if (info.tahap !== "Besar") {
       langkah = { teks: "Catat fase besar saat larva mulai diberi pakan. Setelah itu perkiraan hasil panen akan muncul.", tombol: "Catat fase besar", aksi: () => router.push(`/app/maggot/${id}/fase-besar`) };
-    } else if (!info.hasilKg && telurGram >= 1) {
+    } else if (!info.hasilKg && telurGram > 0) {
       langkah = {
         teks: "Fase besar sudah dicatat, tapi perkiraan panen belum ada. Ketuk tombol di bawah untuk menghitungnya.",
         tombol: "Hitung perkiraan panen",
@@ -298,8 +298,8 @@ export function FaseBesarScreen() {
   const simpan = async () => {
     const pakanKg = bacaAngka(pakan);
     if (pakanKg === null || pakanKg <= 0) { setGalat("Isi jumlah pakan dalam kg, lebih dari 0"); return; }
-    const telurGram = Math.round(Number(siklus?.jumlahTelur) || 0);
-    if (telurGram < 1) { toast("Jumlah telur siklus ini tidak ditemukan, jadi perkiraan panen tidak bisa dihitung.", 5000); return; }
+    const telurGram = Number(siklus?.jumlahTelur) || 0;
+    if (telurGram <= 0) { toast("Jumlah telur siklus ini tidak ditemukan, jadi perkiraan panen tidak bisa dihitung.", 5000); return; }
     const pakanGram = pakanKg * 1000;
 
     if (!hanyaPanen) {
@@ -378,7 +378,7 @@ export function PerkiraanScreen() {
             <section className="ghm-kartu">
               <h2 className="ghm-label">Dihitung dari</h2>
               <dl className="ghm-rincian-daftar">
-                {siklus.jumlahTelur ? <><dt>Telur</dt><dd>{formatKg(siklus.jumlahTelur)} gram</dd></> : null}
+                {siklus.jumlahTelur ? <><dt>Telur</dt><dd>{formatGram(siklus.jumlahTelur)} gram</dd></> : null}
                 {siklus.mediaTelur ? <><dt>Media</dt><dd>{siklus.mediaTelur}</dd></> : null}
                 {pakanGram ? <><dt>Pakan fase besar</dt><dd>{formatKg(pakanGram / 1000)} kg</dd></> : null}
               </dl>

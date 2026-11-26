@@ -10,6 +10,20 @@ export function parseServerDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Berat telur (gram): 0.5 -> "0,5", 0.25 -> "0,25", 40 -> "40" */
+export function formatGram(value) {
+  return new Intl.NumberFormat(ID, { maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(Number(value) || 0);
+}
+
+/** Isian desimal: hanya angka dan satu koma (titik diubah jadi koma), maksimal `desimal` angka di belakang koma. "055" -> "55", "0,5" tetap. */
+export function rapikanDesimal(teks, desimal = 2) {
+  const s = String(teks ?? "").replace(/\./g, ",").replace(/[^\d,]/g, "");
+  const i = s.indexOf(",");
+  const bulat = (i === -1 ? s : s.slice(0, i)).replace(/^0+(?=\d)/, "");
+  if (i === -1) return bulat;
+  return `${bulat || "0"},${s.slice(i + 1).replace(/,/g, "").slice(0, desimal)}`;
+}
+
 /** 1240 -> "1.240", 12.5 -> "12,5" */
 export function formatKg(value) {
   return new Intl.NumberFormat(ID, { maximumFractionDigits: 1, minimumFractionDigits: 0 }).format(Number(value) || 0);
