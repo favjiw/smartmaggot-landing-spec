@@ -67,7 +67,7 @@ export function MaggotScreen() {
           <ul className="ghm-daftar-pengingat">
             {pengingat.map((p) => (
               <li key={p.kunci}>
-                <Link href={`/app/maggot/${p.siklusId}`}>
+                <Link href={`/app/maggot/${p.ref}`}>
                   <strong>{p.judul}</strong>
                   <span className="ghm-kecil">{p.isiLayar}</span>
                 </Link>
@@ -115,7 +115,7 @@ function KartuSiklus({ siklus, detail }) {
 
   return (
     <li>
-      <Link href={`/app/maggot/${siklus.id}`} className="ghm-kartu ghm-kartu-siklus">
+      <Link href={`/app/maggot/${siklus.kode ?? siklus.id}`} className="ghm-kartu ghm-kartu-siklus">
         <div className="ghm-kartu-siklus-atas">
           <strong className="ghm-judul-bagian">Siklus {siklus.id}</strong>
           {mulai && <span className="ghm-hari-ke">{hariKeTeks(mulai)}</span>}
@@ -207,12 +207,13 @@ function FormSiklus({ ubahId }) {
     try {
       const res = await api("/siklus", { method: "POST", body });
       // Seperti aplikasi Android: siklus baru langsung punya fase PENETASAN (jumlah telur dalam gram).
-      const siklusId = res?.data?.id;
-      if (siklusId) {
-        await api(`/siklus/${siklusId}/fase`, { method: "POST", body: { jenis: "PENETASAN", tanggal, jumlahTelur: telur } }).catch(() => null);
+      // URL memakai kode acak siklus (ID angka tidak ditampilkan di alamat halaman).
+      const ref = res?.data?.kode ?? res?.data?.id;
+      if (ref) {
+        await api(`/siklus/${ref}/fase`, { method: "POST", body: { jenis: "PENETASAN", tanggal, jumlahTelur: telur } }).catch(() => null);
       }
       toast("Siklus baru dimulai");
-      router.replace(siklusId ? `/app/maggot/${siklusId}` : "/app/maggot");
+      router.replace(ref ? `/app/maggot/${ref}` : "/app/maggot");
     } catch (err) {
       if (perluDiantrekan(err)) {
         // Tidak ada internet: simpan di HP, kirim otomatis saat online.
@@ -239,7 +240,7 @@ function FormSiklus({ ubahId }) {
   return (
     <Layar footer={<Tombol onClick={simpan} disabled={sibuk}>{teksTombol}</Tombol>}>
       <BilahAtas kembali={ubah ? `/app/maggot/${ubahId}` : "/app/maggot"} disabled={sibuk} />
-      <h1 className="ghm-judul-layar">{ubah ? `Ubah siklus ${ubahId}` : "Mulai siklus baru"}</h1>
+      <h1 className="ghm-judul-layar">{ubah ? `Ubah siklus ${siklusLama?.id ?? ""}` : "Mulai siklus baru"}</h1>
 
       {ubah ? (
         <Isian label="Tanggal mulai" galat={galat.tanggal} bantuan="Fase siklus dihitung dari tanggal ini.">
@@ -297,6 +298,8 @@ export function DetailSiklusScreen() {
   const [sibukHapus, setSibukHapus] = useState(false);
   const siklus = detail.data?.data;
   const mulai = parseServerDate(siklus?.tanggalMulai);
+  // Label memakai nomor siklus dari data, bukan dari URL (URL berisi kode acak).
+  const label = siklus ? `Siklus ${siklus.id}` : "Siklus";
 
   const info = useMemo(() => {
     if (!siklus) return null;
@@ -337,7 +340,7 @@ export function DetailSiklusScreen() {
             await detail.muat();
           } catch (err) {
             if (perluDiantrekan(err)) {
-              antrekan(JENIS.PERKIRAAN, { siklusId: Number(id), tanggal, telurGram, pakanGram: info.pakanGram });
+              antrekan(JENIS.PERKIRAAN, { siklusId: id, tanggal, telurGram, pakanGram: info.pakanGram });
               toast(PESAN_TERSIMPAN_DI_HP, 5000);
             } else {
               toast(pesanDari(err), 5000);
@@ -356,7 +359,7 @@ export function DetailSiklusScreen() {
     setSibukHapus(true);
     try {
       await api(`/siklus/${id}`, { method: "DELETE" });
-      toast(`Siklus ${id} dihapus`);
+      toast(`${label} dihapus`);
       router.replace("/app/maggot");
     } catch (err) {
       toast(`Gagal menghapus: ${pesanDari(err)}`, 5000);
@@ -368,14 +371,14 @@ export function DetailSiklusScreen() {
   if (!boleh) return null;
   return (
     <Layar footer={langkah ? <Tombol onClick={langkah.aksi} disabled={menghitung}>{menghitung ? "Menghitung perkiraan panen…" : langkah.tombol}</Tombol> : null}>
-      <BilahAtas kembali="/app/maggot" judul={`Siklus ${id}`} sub={mulai ? hariKeTeks(mulai) : undefined} disabled={menghitung} />
+      <BilahAtas kembali="/app/maggot" judul={label} sub={mulai ? hariKeTeks(mulai) : undefined} disabled={menghitung} />
       {detail.error && !siklus ? (
         <GalatMuat pesan={detail.error} onCobaLagi={detail.muat} />
       ) : !info ? (
         <Memuat />
       ) : (
         <>
-          <h1 className="ghm-angka-sedang">{mulai ? hariKeTeks(mulai) : `Siklus ${id}`}</h1>
+          <h1 className="ghm-angka-sedang">{mulai ? hariKeTeks(mulai) : label}</h1>
           {mulai && <Pita fase={info.fase} />}
 
           {mulai && (
@@ -438,7 +441,7 @@ export function DetailSiklusScreen() {
       )}
       {konfirmasiHapus && (
         <Dialog
-          judul={`Hapus siklus ${id}?`}
+          judul={`Hapus ${label.toLowerCase()}?`}
           pesan="Semua catatan fase dan perkiraan panen siklus ini ikut terhapus dan tidak bisa dikembalikan."
           ya="Hapus"
           sibuk={sibukHapus}
@@ -464,6 +467,7 @@ export function FaseBesarScreen({ ubah = false }) {
   const siklus = detail.data?.data;
   const mulai = parseServerDate(siklus?.tanggalMulai);
   const pembesaran = cariFase(siklus?.fase, "PEMBESARAN");
+  const label = siklus ? `Siklus ${siklus.id}` : "Siklus";
   const [tanggal, setTanggal] = useState(() => nilaiInputTanggal());
   const [pakan, setPakan] = useState("");
   const [keterangan, setKeterangan] = useState("");
@@ -533,7 +537,7 @@ export function FaseBesarScreen({ ubah = false }) {
     if (telurGram <= 0) { toast("Jumlah telur siklus ini tidak ditemukan, jadi perkiraan panen tidak bisa dihitung.", 5000); return; }
     const pakanGram = pakanKg * 1000;
     const ket = keterangan.trim();
-    const siklusId = Number(id);
+    const siklusId = id; // kode acak dari URL (backend menerima kode maupun ID)
 
     if (!hanyaPanen) {
       setStatus("simpan");
@@ -579,7 +583,7 @@ export function FaseBesarScreen({ ubah = false }) {
   if (ubah && siklus && !pembesaran) {
     return (
       <Layar footer={<TombolLink href={`/app/maggot/${id}`} varian="garis">Kembali ke siklus</TombolLink>}>
-        <BilahAtas kembali={`/app/maggot/${id}`} judul={`Siklus ${id}`} />
+        <BilahAtas kembali={`/app/maggot/${id}`} judul={label} />
         <p className="ghm-kartu ghm-kecil">Fase besar siklus ini belum dicatat.</p>
       </Layar>
     );
@@ -588,7 +592,7 @@ export function FaseBesarScreen({ ubah = false }) {
     : status ? "Memproses…" : ubah ? "Simpan perubahan" : "Simpan dan lihat perkiraan";
   return (
     <Layar footer={<Tombol onClick={simpan} disabled={sibuk || !siklus || (ubah && !terisi)}>{teksTombol}</Tombol>}>
-      <BilahAtas kembali={`/app/maggot/${id}`} judul={`Siklus ${id}`} sub={mulai ? hariKeTeks(mulai) : undefined} disabled={sibuk} />
+      <BilahAtas kembali={`/app/maggot/${id}`} judul={label} sub={mulai ? hariKeTeks(mulai) : undefined} disabled={sibuk} />
       <h1 className="ghm-judul-layar">{ubah ? "Ubah catatan fase besar" : "Catat fase besar"}</h1>
       {detail.error && !siklus ? <GalatMuat pesan={detail.error} onCobaLagi={detail.muat} /> : ubah && !terisi ? <Memuat /> : (
         <>

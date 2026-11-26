@@ -349,6 +349,8 @@ textarea.ghm-input { resize: vertical; min-height: 80px; }
 .titik-titik i:nth-child(2) { animation-delay: 0.15s; }
 .titik-titik i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes ghm-lompat { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.ghm-sumber-web { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--garis); font-size: 14px; color: var(--tinta-redup); }
+.ghm-sumber-web a { color: var(--daun-700); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .ghm-saran { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
 .ghm-saran-tombol { align-self: flex-start; text-align: left; min-height: 48px; padding: 10px 16px; border-radius: 16px; border: 1.5px solid var(--daun-700); background: var(--tunas-50); color: var(--daun-900); font-weight: 700; cursor: pointer; }
 .ghm-saran-tombol:disabled { opacity: 0.5; }

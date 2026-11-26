@@ -32,6 +32,7 @@ export function pengingatHariIni(daftarSiklus, sekarang = new Date()) {
       hasil.push({
         kunci: `${s.id}-fase-${hari}-${s.tanggalMulai}`,
         siklusId: s.id,
+        ref: s.kode ?? s.id,
         judul: `Siklus ${s.id} masuk fase ${fase.nama}`,
         isi: `Hari ke-${hari}. Buka aplikasi untuk melihat panduan fase ini.`,
         isiLayar: `Hari ke-${hari}. Ketuk untuk melihat panduan fase ini.`,
@@ -41,6 +42,7 @@ export function pengingatHariIni(daftarSiklus, sekarang = new Date()) {
       hasil.push({
         kunci: `${s.id}-pakan-${hari}-${s.tanggalMulai}`,
         siklusId: s.id,
+        ref: s.kode ?? s.id,
         judul: "Waktunya memberi pakan",
         isi: `Siklus ${s.id} hari ke-${hari}: beri pakan 1–1,5 kg per baki, lalu catat di aplikasi.`,
         isiLayar: `Siklus ${s.id} hari ke-${hari}: beri pakan 1–1,5 kg per baki.`,
@@ -84,7 +86,7 @@ async function tampilkanNotifikasi(daftarSiklus) {
         tag: p.kunci,
         icon: "/ghm/icon-192.png",
         badge: "/ghm/icon-192.png",
-        data: { url: `/app/maggot/${p.siklusId}` },
+        data: { url: `/app/maggot/${p.ref}` },
       });
       tampil[p.kunci] = Date.now();
     } catch { /* abaikan; dicoba lagi saat cek berikutnya */ }

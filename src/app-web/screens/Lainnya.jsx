@@ -28,6 +28,22 @@ function TeksJawaban({ teks }) {
   ));
 }
 
+/** Sumber internet di bawah jawaban GardaBot (hanya tautan http/https, ditampilkan nama situsnya). */
+function SumberWeb({ sumber }) {
+  const valid = (sumber || [])
+    .map((s) => { try { const u = new URL(s.url); return /^https?:$/.test(u.protocol) ? { url: u.href, situs: u.hostname.replace(/^www\./, ""), judul: s.judul } : null; } catch { return null; } })
+    .filter(Boolean);
+  if (!valid.length) return null;
+  return (
+    <div className="ghm-sumber-web">
+      <span>Sumber:</span>
+      {valid.map((s) => (
+        <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer nofollow" title={s.judul || s.situs}>{s.situs}</a>
+      ))}
+    </div>
+  );
+}
+
 export function GardaBotScreen() {
   const boleh = useRequireAuth();
   const [pesan, setPesan] = useState([]);
@@ -51,9 +67,11 @@ export function GardaBotScreen() {
     setPesan((p) => [...p, { dari: "saya", teks: pertanyaan }]);
     setMenunggu(true);
     let jawaban;
+    let sumber = [];
     try {
       const res = await api("/chatbot/tanya", { method: "POST", timeout: 70000, body: { pertanyaan } });
       jawaban = res?.data?.jawaban?.trim() || "Maaf, GardaBot belum bisa menjawab. Periksa internet lalu coba lagi.";
+      if (res?.data?.asal === "internet" && Array.isArray(res.data.sumberWeb)) sumber = res.data.sumberWeb.slice(0, 5);
     } catch (err) {
       // 429: terlalu banyak pertanyaan; 503: layanan AI tidak tersedia; lainnya: jaringan.
       if (err instanceof ApiError && err.status === 429) jawaban = PESAN[429];
@@ -61,7 +79,7 @@ export function GardaBotScreen() {
       else if (err instanceof ApiError && err.status === 401) return;
       else jawaban = "Maaf, GardaBot belum bisa menjawab. Periksa internet lalu coba lagi.";
     }
-    setPesan((p) => [...p, { dari: "bot", teks: jawaban }]);
+    setPesan((p) => [...p, { dari: "bot", teks: jawaban, sumber }]);
     setMenunggu(false);
   };
 
@@ -97,7 +115,7 @@ export function GardaBotScreen() {
         )}
         {pesan.map((p, i) => (
           <div key={i} className={`gelembung ${p.dari === "saya" ? "saya" : "bot"}`}>
-            {p.dari === "bot" ? <TeksJawaban teks={p.teks} /> : p.teks}
+            {p.dari === "bot" ? <><TeksJawaban teks={p.teks} /><SumberWeb sumber={p.sumber} /></> : p.teks}
           </div>
         ))}
         {menunggu && <div className="gelembung bot mengetik"><span className="titik-titik" aria-hidden="true"><i /><i /><i /></span>GardaBot sedang mengetik…</div>}
@@ -139,7 +157,7 @@ export function NotifikasiScreen() {
           <ul className="ghm-kartu ghm-daftar">
             {items.map((n) => (
               <li key={n.id}>
-                <Link href={`/app/notifikasi/${n.id}`} className={`ghm-baris-notif ${n.isRead ? "" : "baru"}`}>
+                <Link href={`/app/notifikasi/${n.kode ?? n.id}`} className={`ghm-baris-notif ${n.isRead ? "" : "baru"}`}>
                   <span className="ghm-baris-teks">
                     <strong>{n.title}</strong>
                     <small className="ghm-dua-baris">{n.message}</small>
@@ -161,7 +179,8 @@ export function DetailNotifikasiScreen() {
   const { id } = useParams();
   const notif = useMuat(async () => {
     const res = await api("/notifikasi");
-    const item = (res?.data || []).find((n) => String(n.id) === String(id));
+    // URL memakai kode acak; ID angka (tautan lama) tetap dikenali.
+    const item = (res?.data || []).find((n) => n.kode === id || String(n.id) === String(id));
     if (!item) throw new ApiError(PESAN[404], 404);
     if (!item.isRead) api(`/notifikasi/${id}/read`, { method: "PATCH" }).catch(() => null);
     return item;

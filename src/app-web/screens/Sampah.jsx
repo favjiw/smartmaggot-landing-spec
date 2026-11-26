@@ -133,7 +133,7 @@ export function SampahScreen() {
             const pukul = jam(d);
             return (
               <li key={item.id}>
-                <Link href={`/app/sampah/${item.id}`} className="ghm-baris-riwayat">
+                <Link href={`/app/sampah/${item.kode ?? item.id}`} className="ghm-baris-riwayat">
                   <span className="ghm-tanggal-kotak"><b>{d ? angkaTanggal(d) : "-"}</b><small>{d ? bulanSingkat(d).replace(/\.$/, "") : ""}</small></span>
                   <span className="ghm-baris-teks">
                     <strong>{formatKg(item.totalSampah)} kg masuk</strong>
