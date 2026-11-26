@@ -175,10 +175,23 @@ function useUrlFoto(blob) {
 
 const INFO_FOTO = "Foto disimpan di HP, belum dikirim ke server.";
 
-export function CatatSampahScreen() {
+export const CatatSampahScreen = () => <FormSampah />;
+
+export function UbahSampahScreen() {
+  const { id } = useParams();
+  return <FormSampah ubahId={id} />;
+}
+
+const samaWaktu = (a, b) => new Date(a).getTime() === new Date(b).getTime();
+
+/** Form catat sampah; dengan `ubahId` dipakai untuk mengubah catatan yang sudah ada. */
+function FormSampah({ ubahId }) {
+  const ubah = !!ubahId;
   const boleh = useRequireAuth();
   const { toast } = useSession();
   const router = useRouter();
+  const lama = useMuat(() => (ubah ? api(`/pencacahan/${ubahId}`) : Promise.resolve(null)), [ubahId], boleh);
+  const item = lama.data?.data;
   const [tanggal, setTanggal] = useState(() => nilaiInputTanggal());
   const [pukul, setPukul] = useState(() => nilaiInputJam());
   const [berat, setBerat] = useState("");
@@ -188,6 +201,18 @@ export function CatatSampahScreen() {
   const inputFoto = useRef(null);
   const [galat, setGalat] = useState(null);
   const [sibuk, setSibuk] = useState(false);
+  const [terisi, setTerisi] = useState(!ubah);
+
+  // Mode ubah: isi form dari catatan lama (sekali saja, supaya ketikan tidak tertimpa saat dimuat ulang).
+  useEffect(() => {
+    if (!ubah || !item || terisi) return;
+    const d = parseServerDate(item.tanggalWaktu);
+    if (d) { setTanggal(nilaiInputTanggal(d)); setPukul(nilaiInputJam(d)); }
+    setBerat(String(item.totalSampah ?? "").replace(".", ","));
+    setCatatan(item.catatan || "");
+    ambilFoto(item.tanggalWaktu).then(setFoto);
+    setTerisi(true);
+  }, [ubah, item, terisi]);
 
   const ubahBerat = (langkah) => {
     const baru = Math.max(0, (bacaAngka(berat) ?? 0) + langkah);
@@ -212,6 +237,22 @@ export function CatatSampahScreen() {
     if (Number.isNaN(waktu.getTime())) { setGalat("Tanggal atau pukul tidak valid"); return; }
     setSibuk(true);
     const body = { tanggalWaktu: waktu.toISOString(), totalSampah: kg, catatan: catatan.trim() || null };
+
+    if (ubah) {
+      try {
+        await api(`/pencacahan/${ubahId}`, { method: "PUT", body });
+        // Foto lokal mengikuti kunci tanggalWaktu yang baru.
+        if (!foto || !samaWaktu(item.tanggalWaktu, body.tanggalWaktu)) await hapusFoto(item.tanggalWaktu);
+        if (foto) await simpanFoto(body.tanggalWaktu, foto);
+        toast("Catatan sampah diperbarui");
+        router.replace(`/app/sampah/${ubahId}`);
+      } catch (err) {
+        toast(`Gagal menyimpan: ${pesanDari(err)}`, 4500);
+        setSibuk(false);
+      }
+      return;
+    }
+
     // Foto disimpan lokal dengan kunci tanggalWaktu (API belum menerima gambar).
     if (foto) await simpanFoto(body.tanggalWaktu, foto);
     try {
@@ -233,11 +274,19 @@ export function CatatSampahScreen() {
   };
 
   if (!boleh) return null;
+  if (ubah && !terisi) {
+    return (
+      <Layar>
+        <BilahAtas kembali={`/app/sampah/${ubahId}`} />
+        {lama.error ? <GalatMuat pesan={lama.error} onCobaLagi={lama.muat} /> : <Memuat />}
+      </Layar>
+    );
+  }
   return (
-    <Layar footer={<Tombol onClick={simpan} disabled={sibuk}>{sibuk ? "Memproses…" : "Simpan catatan"}</Tombol>}>
-      <BilahAtas kembali="/app" disabled={sibuk} />
-      <h1 className="ghm-judul-layar">Catat sampah organik</h1>
-      <p className="ghm-kecil ghm-subjudul-layar">Isi setelah sampah organik selesai ditimbang.</p>
+    <Layar footer={<Tombol onClick={simpan} disabled={sibuk}>{sibuk ? "Memproses…" : ubah ? "Simpan perubahan" : "Simpan catatan"}</Tombol>}>
+      <BilahAtas kembali={ubah ? `/app/sampah/${ubahId}` : "/app"} disabled={sibuk} />
+      <h1 className="ghm-judul-layar">{ubah ? "Ubah catatan sampah" : "Catat sampah organik"}</h1>
+      <p className="ghm-kecil ghm-subjudul-layar">{ubah ? "Perbaiki data yang salah, lalu simpan." : "Isi setelah sampah organik selesai ditimbang."}</p>
 
       <div className="ghm-dua-kolom">
         <Isian label="Tanggal">
@@ -282,7 +331,11 @@ export function CatatSampahScreen() {
 
 export function DetailSampahScreen() {
   const boleh = useRequireAuth();
+  const { toast } = useSession();
+  const router = useRouter();
   const { id } = useParams();
+  const [konfirmasiHapus, setKonfirmasiHapus] = useState(false);
+  const [sibukHapus, setSibukHapus] = useState(false);
   const detail = useMuat(() => api(`/pencacahan/${id}`), [id], boleh);
   const item = detail.data?.data;
   const waktu = parseServerDate(item?.tanggalWaktu);
@@ -294,6 +347,20 @@ export function DetailSampahScreen() {
     if (item?.tanggalWaktu) ambilFoto(item.tanggalWaktu).then((b) => { if (!batal) setFoto(b); });
     return () => { batal = true; };
   }, [item?.tanggalWaktu]);
+
+  const hapus = async () => {
+    setSibukHapus(true);
+    try {
+      await api(`/pencacahan/${id}`, { method: "DELETE" });
+      await hapusFoto(item?.tanggalWaktu);
+      toast("Catatan sampah dihapus");
+      router.replace("/app");
+    } catch (err) {
+      toast(`Gagal menghapus: ${pesanDari(err)}`, 4500);
+      setSibukHapus(false);
+      setKonfirmasiHapus(false);
+    }
+  };
 
   if (!boleh) return null;
   return (
@@ -319,7 +386,21 @@ export function DetailSampahScreen() {
             </section>
           )}
           {item.createdAt && <p className="ghm-kecil ghm-jarak-atas">Dicatat {tanggalSedang(parseServerDate(item.createdAt))}</p>}
+          <div className="ghm-aksi-baris">
+            <TombolLink href={`/app/sampah/${id}/ubah`} varian="garis">Ubah</TombolLink>
+            <Tombol varian="bahaya" onClick={() => setKonfirmasiHapus(true)}>Hapus</Tombol>
+          </div>
         </>
+      )}
+      {konfirmasiHapus && (
+        <Dialog
+          judul="Hapus catatan ini?"
+          pesan={`Catatan ${formatKg(item?.totalSampah)} kg ${waktu ? `pada ${tanggalSedang(waktu)}` : ""} akan dihapus dan tidak bisa dikembalikan.`}
+          ya="Hapus"
+          sibuk={sibukHapus}
+          onBatal={() => setKonfirmasiHapus(false)}
+          onYa={hapus}
+        />
       )}
     </Layar>
   );

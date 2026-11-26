@@ -268,6 +268,10 @@ textarea.ghm-input { resize: vertical; min-height: 80px; }
 .ghm-tombol.utama:hover { background: var(--daun-900); }
 .ghm-tombol.utama:disabled { background: var(--garis); color: var(--tinta-redup); cursor: default; }
 .ghm-tombol.garis { background: var(--putih); color: var(--daun-900); border-color: var(--daun-700); }
+.ghm-tombol.bahaya { background: var(--putih); color: var(--galat); border-color: var(--galat); }
+.ghm-tombol.bahaya:disabled { opacity: 0.5; cursor: default; }
+.ghm-aksi-baris { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.ghm-aksi-kolom { display: flex; flex-direction: column; gap: 10px; }
 
 .ghm-pilihan-grid { display: grid; gap: 10px; }
 .ghm-pilihan-grid.dua { grid-template-columns: 1fr 1fr; }
